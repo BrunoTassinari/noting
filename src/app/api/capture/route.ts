@@ -15,7 +15,13 @@ export async function POST(req: Request) {
   const h = await headers();
   // Só o próprio site (o cookie já é SameSite=Lax; isto é uma segunda trava).
   const origin = h.get("origin");
-  if (origin && new URL(origin).host !== h.get("host")) {
+  let originHost: string | null = null;
+  try {
+    originHost = origin ? new URL(origin).host : null;
+  } catch {
+    originHost = "inválida"; // ex.: "Origin: null"
+  }
+  if (origin && originHost !== h.get("host")) {
     return NextResponse.json({ error: "Origem não permitida." }, { status: 403, headers: noStore });
   }
 
