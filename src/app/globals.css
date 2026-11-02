@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+/* Tokens do design (artefato "Notas v1") */
+@theme inline {
+  --color-bg: #16171b;
+  --color-rail: #121316;
+  --color-panel: #1b1c21;
+  --color-surface: #1f2126;
+  --color-card: #23262d;
+  --color-active: #2a2d35;
+  --color-code: #15161a;
+  --color-border: #2a2c33;
+  --color-text: #dcdee4;
+  --color-text-strong: #ffffff;
+  --color-text-soft: #b4b8c4;
+  --color-muted: #8d92a0;
+  --color-accent: #7fd1c4;
+  --color-accent-ink: #101114;
+  --color-danger: #f08c8c;
+
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
