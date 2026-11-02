@@ -330,7 +330,7 @@ function TitleInput({
   title: string;
   autoSelect: boolean;
 }) {
-  const { showError } = useVault();
+  const { showError, reportRelinked } = useVault();
   const [draft, setDraft] = useState(title);
 
   // Só na montagem: nota nova já vem com o nome selecionado.
@@ -347,7 +347,9 @@ function TitleInput({
     let err: string | null;
     try {
       await whenCreated(noteId);
-      err = actionError(await renameNoteAction(noteId, draft));
+      const res = await renameNoteAction(noteId, draft);
+      err = actionError(res);
+      if (res.ok) reportRelinked(res.relinked);
     } catch (e) {
       err = (e as Error).message;
     }
