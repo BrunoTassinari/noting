@@ -44,3 +44,6 @@ next-env.d.ts
 
 # capturas de tela de testes locais
 /*.png
+
+# worktrees locais de agentes
+/.claude/
