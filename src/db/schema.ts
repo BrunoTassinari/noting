@@ -156,4 +156,23 @@ export const links = pgTable(
   ],
 );
 
+// Lixeira: notas excluídas, com o id original (restaurar devolve o mesmo
+// id). Itens com mais de 30 dias são apagados de vez ao abrir a lixeira.
+export const trash = pgTable(
+  "trash",
+  {
+    id: uuid("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    path: text("path").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("trash_user_deleted_idx").on(t.userId, t.deletedAt.desc())],
+);
+
 export type Note = typeof notes.$inferSelect;
