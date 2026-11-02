@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { signOut } from "@/app/login/actions";
 import {
+  CalendarIcon,
+  CalendarMonthIcon,
+  CalendarWeekIcon,
   FolderPlusIcon,
   LogoutIcon,
   NoteIcon,
@@ -16,11 +19,13 @@ import { Menu } from "./menu";
 import { prefetchNote } from "./note-cache";
 import { NoteLink } from "./note-link";
 import { Tree } from "./sidebar";
+import { usePeriodicNotes } from "./use-periodic";
 import { useVault } from "./vault-context";
 
 /** Tela "Notas" do celular (artboard Mobile · arquivos). */
 export function MobileHome() {
   const { notes, creating, createNote, openNewFolder, openSearch } = useVault();
+  const { openPeriodic } = usePeriodicNotes();
   const [tab, setTab] = useState<"recent" | "folders">("recent");
   const recent = useMemo(
     () => [...notes].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
@@ -73,6 +78,24 @@ export function MobileHome() {
           <SearchIcon size={18} />
           Buscar notas
         </button>
+        <div className="mt-2 flex gap-2">
+          {(
+            [
+              ["week", "Esta semana", <CalendarWeekIcon key="w" size={18} />],
+              ["month", "Este mês", <CalendarMonthIcon key="m" size={18} />],
+            ] as const
+          ).map(([kind, label, icon]) => (
+            <button
+              key={kind}
+              type="button"
+              onClick={() => openPeriodic(kind)}
+              className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border text-sm font-medium text-text active:bg-card"
+            >
+              <span className="text-muted">{icon}</span>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div role="tablist" aria-label="Modo da lista" className="mx-4 mb-2 flex shrink-0 gap-1 rounded-xl bg-rail p-1">
@@ -136,15 +159,25 @@ export function MobileHome() {
         )}
       </div>
 
-      <button
-        type="button"
-        disabled={creating}
-        onClick={() => createNote("")}
-        className="absolute bottom-[calc(76px+env(safe-area-inset-bottom))] right-5 z-10 flex h-[52px] items-center gap-2 rounded-full bg-accent px-5 text-[15px] font-semibold text-accent-ink shadow-lg disabled:opacity-60"
-      >
-        <PlusIcon size={20} />
-        Nova nota
-      </button>
+      <div className="absolute bottom-[calc(76px+env(safe-area-inset-bottom))] right-5 z-10 flex items-center gap-2.5">
+        <button
+          type="button"
+          onClick={() => openPeriodic("day")}
+          className="flex h-[52px] items-center gap-2 rounded-full border border-border bg-card px-5 text-[15px] font-semibold text-text-strong shadow-lg active:bg-active"
+        >
+          <CalendarIcon size={20} className="text-accent" />
+          Hoje
+        </button>
+        <button
+          type="button"
+          disabled={creating}
+          onClick={() => createNote("")}
+          className="flex h-[52px] items-center gap-2 rounded-full bg-accent px-5 text-[15px] font-semibold text-accent-ink shadow-lg disabled:opacity-60"
+        >
+          <PlusIcon size={20} />
+          Nova nota
+        </button>
+      </div>
 
       <nav
         aria-label="Navegação"

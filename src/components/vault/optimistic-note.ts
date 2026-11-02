@@ -23,6 +23,8 @@ export type OptimisticNote = NoteMeta & {
   opening: boolean;
   /** Muda quando o conteúdo do servidor substitui o mostrado (remonta o editor). */
   version: number;
+  /** create: false = não seleciona o nome ao abrir (ex.: nota do dia, já nomeada). */
+  selectTitle?: boolean;
 };
 
 let current: OptimisticNote | null = null;
@@ -54,8 +56,11 @@ export function markEdited(id: string) {
   edited.add(id);
 }
 
-/** Mostra a nota nova imediatamente e registra a criação em andamento. */
-export function startOptimisticNote(note: NoteMeta) {
+/**
+ * Mostra a nota nova imediatamente e registra a criação em andamento.
+ * `body`: corpo inicial (modelo); `selectTitle`: selecionar o nome para renomear.
+ */
+export function startOptimisticNote(note: NoteMeta, opts: { body?: string; selectTitle?: boolean } = {}) {
   let resolve!: () => void;
   let reject!: (e: Error) => void;
   const promise = new Promise<void>((res, rej) => {
@@ -65,7 +70,16 @@ export function startOptimisticNote(note: NoteMeta) {
   promise.catch(() => {}); // quem espera trata; evita "unhandled rejection"
   creations.set(note.id, { promise, resolve, reject });
   edited.delete(note.id);
-  current = { ...note, body: "", backlinks: [], mode: "create", pending: true, opening: false, version: 0 };
+  current = {
+    ...note,
+    body: opts.body ?? "",
+    backlinks: [],
+    mode: "create",
+    pending: true,
+    opening: false,
+    version: 0,
+    selectTitle: opts.selectTitle ?? true,
+  };
   emit();
 }
 

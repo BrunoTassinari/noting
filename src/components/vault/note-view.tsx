@@ -33,6 +33,7 @@ import { Outline } from "./outline";
 import { Sheet } from "./sheet";
 import { Menu } from "./menu";
 import { updateCachedBody } from "./note-cache";
+import { PeriodicArrow, PeriodicNav, usePeriodicMenuItems } from "./periodic-nav";
 import { markEdited, whenCreated } from "./optimistic-note";
 import { actionError, useVault } from "./vault-context";
 
@@ -65,7 +66,9 @@ export function NoteView({
   const [sheetOpen, setSheetOpen] = useState(false);
   const backlinkCount = note.backlinks?.length ?? 0;
 
+  const periodicItems = usePeriodicMenuItems(note);
   const menuItems = [
+    ...periodicItems,
     {
       label: `Backlinks (${backlinkCount}) e tópicos`,
       icon: <LinkIcon size={15} />,
@@ -102,10 +105,12 @@ export function NoteView({
         >
           <MenuIcon size={22} />
         </Link>
+        <PeriodicArrow note={note} dir={-1} />
         <div className="min-w-0 flex-1 text-center">
           <div className="truncate text-[15px] font-semibold text-text-strong">{note.title}</div>
           <div className="truncate text-xs text-muted">{displayFolder(note.path)}</div>
         </div>
+        <PeriodicArrow note={note} dir={1} />
         <Menu
           label="Mais opções"
           trigger={<MoreIcon size={22} />}
@@ -138,6 +143,7 @@ export function NoteView({
         ))}
         <span className="truncate text-text">{note.title}</span>
         <div className="flex-1" />
+        <PeriodicNav note={note} />
         <Menu
           label="Mais opções"
           trigger={<MoreIcon size={16} />}

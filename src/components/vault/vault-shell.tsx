@@ -3,10 +3,18 @@
 import { useParams } from "next/navigation";
 import { type ReactNode, useEffect } from "react";
 import { signOut } from "@/app/login/actions";
-import { FolderIcon, LogoutIcon, SearchIcon } from "@/components/icons";
+import {
+  CalendarIcon,
+  CalendarMonthIcon,
+  CalendarWeekIcon,
+  FolderIcon,
+  LogoutIcon,
+  SearchIcon,
+} from "@/components/icons";
 import type { NoteMeta } from "@/lib/note-paths";
 import { MobileHome } from "./mobile-home";
 import { Sidebar } from "./sidebar";
+import { usePeriodicNotes } from "./use-periodic";
 import { useVisualViewport } from "./use-visual-viewport";
 import { NoteSkeleton } from "./note-skeleton";
 import { NoteView } from "./note-view";
@@ -25,6 +33,7 @@ function Layout({ children }: { children: ReactNode }) {
   const routeId = useParams<{ id?: string }>().id;
   const noteOpen = Boolean(routeId || optimisticNote);
   const viewport = useVisualViewport();
+  const { openPeriodic } = usePeriodicNotes();
 
   // Baixa o código do editor em segundo plano: a primeira nota já abre pronta.
   useEffect(() => {
@@ -59,6 +68,25 @@ function Layout({ children }: { children: ReactNode }) {
         >
           <SearchIcon size={18} />
         </button>
+        <div aria-hidden="true" className="my-1 h-px w-6 bg-border" />
+        {(
+          [
+            ["day", "Hoje", <CalendarIcon key="d" size={18} />],
+            ["week", "Esta semana", <CalendarWeekIcon key="w" size={18} />],
+            ["month", "Este mês", <CalendarMonthIcon key="m" size={18} />],
+          ] as const
+        ).map(([kind, label, icon]) => (
+          <button
+            key={kind}
+            type="button"
+            aria-label={label}
+            title={label}
+            onClick={() => openPeriodic(kind)}
+            className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-card hover:text-text"
+          >
+            {icon}
+          </button>
+        ))}
         <div className="flex-1" />
         <form action={signOut}>
           <button
@@ -94,7 +122,7 @@ function Layout({ children }: { children: ReactNode }) {
             <NoteView
               key={`${optimisticNote.id}:${optimisticNote.version}`}
               note={optimisticNote}
-              isNew={optimisticNote.mode === "create"}
+              isNew={optimisticNote.mode === "create" && optimisticNote.selectTitle !== false}
             />
           ))}
         <div className={optimisticNote ? "hidden" : "contents"}>{children}</div>
