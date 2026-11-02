@@ -189,6 +189,7 @@ function NoteRow({ note, indent, active }: { note: NoteMeta; indent: number; act
     <li>
       <Link
         href={`/n/${note.id}`}
+        prefetch={false}
         aria-current={active ? "page" : undefined}
         style={{ paddingLeft: indent }}
         className={`${rowBase} ${
@@ -219,6 +220,7 @@ function FilteredList({ notes, query, activeId }: { notes: NoteMeta[]; query: st
         <li key={n.id}>
           <Link
             href={`/n/${n.id}`}
+            prefetch={false}
             aria-current={n.id === activeId ? "page" : undefined}
             className={`flex flex-col rounded-md px-2 py-1.5 ${
               n.id === activeId ? "bg-active" : "hover:bg-card"

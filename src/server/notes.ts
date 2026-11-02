@@ -31,12 +31,17 @@ const toMeta = (r: { id: string; path: string; title: string; updatedAt: Date })
   updatedAt: r.updatedAt.toISOString(),
 });
 
-function isUniqueViolation(err: unknown): boolean {
-  for (let e = err as { code?: string; cause?: unknown } | undefined; e; e = e.cause as typeof e) {
-    if (e.code === "23505") return true;
+type PgError = { code?: string; constraint?: string; cause?: unknown };
+
+/** Nome da constraint UNIQUE violada (o driver embrulha o erro do pg). */
+function uniqueConstraint(err: unknown): string | null {
+  for (let e = err as PgError | undefined; e; e = e.cause as PgError | undefined) {
+    if (e.code === "23505") return e.constraint ?? "";
   }
-  return false;
+  return null;
 }
+
+const isUniqueViolation = (err: unknown) => uniqueConstraint(err) !== null;
 
 const DUPLICATE_MESSAGE = "Já existe uma nota com esse nome nesta pasta.";
 
@@ -84,24 +89,30 @@ async function freeTitle(userId: string, path: string, base: string): Promise<st
   }
 }
 
+/**
+ * Cria a nota. O cliente pode mandar id e título já calculados (criação
+ * otimista): aí é um único INSERT. Se o título colidir, usa o próximo livre.
+ */
 export async function createNote(
   userId: string,
-  input: { path?: string; title?: string },
+  input: { id?: string; path?: string; title?: string },
 ): Promise<NoteMeta> {
+  if (input.id !== undefined && !isUuid(input.id)) throw new NoteError("Id inválido.");
   const path = unwrap(validateFolder(input.path ?? ""));
   const base = input.title ? unwrap(validateTitle(input.title)) : DEFAULT_TITLE;
 
-  // Tenta de novo se outra aba criar o mesmo título ao mesmo tempo.
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const title = await freeTitle(userId, path, base);
+  let title = base;
+  for (let attempt = 0; attempt < 4; attempt++) {
     try {
       const [row] = await db
         .insert(notes)
-        .values({ userId, path, title })
+        .values({ id: input.id, userId, path, title })
         .returning(metaColumns);
       return toMeta(row);
     } catch (err) {
-      if (!isUniqueViolation(err)) throw err;
+      if (uniqueConstraint(err) !== "notes_unique_title_per_folder") throw err;
+      // Outro dispositivo criou o mesmo nome: pega o próximo livre.
+      title = await freeTitle(userId, path, base);
     }
   }
   throw new NoteError(DUPLICATE_MESSAGE);

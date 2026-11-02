@@ -17,6 +17,7 @@ import {
 } from "@/components/icons";
 import { displayFolder, folderSegments, type NoteMeta } from "@/lib/note-paths";
 import { Menu } from "./menu";
+import { whenCreated } from "./optimistic-note";
 import { actionError, useVault } from "./vault-context";
 
 type SaveStatus = "saved" | "pending" | "saving" | "error";
@@ -24,7 +25,14 @@ type SaveStatus = "saved" | "pending" | "saving" | "error";
 const SAVE_DELAY_MS = 700;
 const RETRY_DELAY_MS = 4000;
 
-export function NoteView({ note }: { note: NoteMeta & { body: string } }) {
+export function NoteView({
+  note,
+  isNew = false,
+}: {
+  note: NoteMeta & { body: string };
+  /** Nota acabou de ser criada: foca o título para já renomear. */
+  isNew?: boolean;
+}) {
   const { openMove, openDelete } = useVault();
   const titleRef = useRef<HTMLInputElement>(null);
   const { body, setBody, status, flush } = useAutosave(note.id, note.body);
@@ -108,7 +116,13 @@ export function NoteView({ note }: { note: NoteMeta & { body: string } }) {
         {/* Editor (CodeMirror entra na etapa 3) */}
         <div className="min-w-0 flex-1 overflow-y-auto bg-surface px-5 pb-16 pt-5 md:px-10 md:pt-10">
           <div className="mx-auto max-w-[700px]">
-            <TitleInput key={note.title} ref={titleRef} noteId={note.id} title={note.title} />
+            <TitleInput
+              key={note.title}
+              ref={titleRef}
+              noteId={note.id}
+              title={note.title}
+              autoSelect={isNew}
+            />
             <BodyEditor value={body} onChange={setBody} />
           </div>
         </div>
@@ -167,20 +181,34 @@ function TitleInput({
   ref,
   noteId,
   title,
+  autoSelect,
 }: {
-  ref: React.Ref<HTMLInputElement>;
+  ref: React.RefObject<HTMLInputElement | null>;
   noteId: string;
   title: string;
+  autoSelect: boolean;
 }) {
   const { showError } = useVault();
   const [draft, setDraft] = useState(title);
+
+  // Só na montagem: nota nova já vem com o nome selecionado.
+  useEffect(() => {
+    if (autoSelect) ref.current?.select();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const commit = async () => {
     if (draft.trim() === title) {
       setDraft(title);
       return;
     }
-    const err = actionError(await renameNoteAction(noteId, draft));
+    let err: string | null;
+    try {
+      await whenCreated(noteId);
+      err = actionError(await renameNoteAction(noteId, draft));
+    } catch (e) {
+      err = (e as Error).message;
+    }
     if (err) {
       showError(err);
       setDraft(title);
@@ -262,6 +290,7 @@ function useAutosave(noteId: string, initial: string) {
     setStatus("saving");
     let ok = false;
     try {
+      await whenCreated(noteId); // nota otimista: espera existir no banco
       ok = !actionError(await saveNoteBodyAction(noteId, value));
     } catch {
       ok = false;
@@ -302,7 +331,10 @@ function useAutosave(noteId: string, initial: string) {
       clearTimeout(timer.current);
       // Saiu da nota com alteração pendente: salva sem esperar.
       if (latest.current !== saved.current) {
-        void saveNoteBodyAction(noteId, latest.current);
+        const value = latest.current;
+        void whenCreated(noteId)
+          .then(() => saveNoteBodyAction(noteId, value))
+          .catch(() => {});
       }
     };
   }, [noteId]);

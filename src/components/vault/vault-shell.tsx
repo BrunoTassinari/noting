@@ -6,7 +6,8 @@ import { signOut } from "@/app/login/actions";
 import { FolderIcon, LogoutIcon } from "@/components/icons";
 import type { NoteMeta } from "@/lib/note-paths";
 import { Sidebar } from "./sidebar";
-import { VaultProvider } from "./vault-context";
+import { NoteView } from "./note-view";
+import { useVault, VaultProvider } from "./vault-context";
 
 export function VaultShell({ notes, children }: { notes: NoteMeta[]; children: ReactNode }) {
   return (
@@ -17,7 +18,9 @@ export function VaultShell({ notes, children }: { notes: NoteMeta[]; children: R
 }
 
 function Layout({ children }: { children: ReactNode }) {
-  const noteOpen = Boolean(useParams<{ id?: string }>().id);
+  const { optimisticNote } = useVault();
+  const routeId = useParams<{ id?: string }>().id;
+  const noteOpen = Boolean(routeId || optimisticNote);
 
   return (
     <div className="flex h-dvh min-h-0 w-full overflow-hidden bg-bg">
@@ -54,7 +57,9 @@ function Layout({ children }: { children: ReactNode }) {
 
       {/* Coluna principal */}
       <main className={`min-h-0 min-w-0 flex-1 flex-col md:flex ${noteOpen ? "flex" : "hidden"}`}>
-        {children}
+        {/* Nota recém-criada: aparece já, e continua aqui quando a página real chega. */}
+        {optimisticNote && <NoteView key={optimisticNote.id} note={optimisticNote} isNew />}
+        <div className={optimisticNote ? "hidden" : "contents"}>{children}</div>
       </main>
     </div>
   );

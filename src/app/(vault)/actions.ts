@@ -29,12 +29,19 @@ async function run(fn: (userId: string) => Promise<unknown>, opts = { refresh: t
   return { ok: true };
 }
 
-/** Cria uma nota na pasta indicada e abre. */
-export async function createNoteAction(path: string, title?: string): Promise<ActionResult> {
+/**
+ * Cria a nota e navega até ela. O cliente já mostra a nota antes (criação
+ * otimista) e manda o id e o título que escolheu.
+ */
+export async function createNoteAction(input: {
+  id: string;
+  path: string;
+  title: string;
+}): Promise<ActionResult> {
   const user = await requireUser();
   let id: string;
   try {
-    id = (await createNote(user.id, { path, title })).id;
+    id = (await createNote(user.id, input)).id;
   } catch (err) {
     if (err instanceof NoteError) return { ok: false, error: err.message };
     console.error(err);

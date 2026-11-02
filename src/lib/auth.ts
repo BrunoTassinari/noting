@@ -23,6 +23,9 @@ export const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 30, // 30 dias
     updateAge: 60 * 60 * 24, // renova uma vez por dia
+    // Guarda a sessão num cookie assinado por 5 min: evita ir ao banco em
+    // toda requisição só para saber quem está logado.
+    cookieCache: { enabled: true, maxAge: 5 * 60 },
   },
   // Deve ser o último plugin: grava cookies a partir de Server Actions.
   plugins: [nextCookies()],

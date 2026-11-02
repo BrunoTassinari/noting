@@ -5,6 +5,7 @@ import {
   createContext,
   use,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -17,13 +18,29 @@ import {
   moveNoteAction,
   type ActionResult,
 } from "@/app/(vault)/actions";
-import { displayFolder, listFolders, normalizeFolder, type NoteMeta } from "@/lib/note-paths";
+import {
+  displayFolder,
+  listFolders,
+  nextFreeTitle,
+  normalizeFolder,
+  type NoteMeta,
+} from "@/lib/note-paths";
 import { ConfirmDialog, PromptDialog } from "./dialogs";
+import {
+  clearOptimisticNote,
+  failOptimisticNote,
+  startOptimisticNote,
+  useOptimisticNote,
+  whenCreated,
+  type OptimisticNote,
+} from "./optimistic-note";
 
 type Vault = {
   notes: NoteMeta[];
   folders: string[];
   activeNote: NoteMeta | null;
+  /** Nota recém-criada que o layout mostra antes da página real chegar. */
+  optimisticNote: OptimisticNote | null;
   /** Pasta "atual": a da nota aberta, ou a raiz. */
   currentFolder: string;
   creating: boolean;
@@ -58,15 +75,33 @@ type DialogState = { at?: string } & (
 
 export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children: ReactNode }) {
   const params = useParams<{ id?: string }>();
-  const activeNote = useMemo(
-    () => notes.find((n) => n.id === params.id) ?? null,
-    [notes, params.id],
+  const optimistic = useOptimisticNote();
+  const optimisticNote =
+    optimistic && (optimistic.pending || optimistic.id === params.id) ? optimistic : null;
+  const activeId = optimisticNote?.id ?? params.id;
+
+  // Saiu da nota recém-criada: daqui em diante ela vem do servidor.
+  useEffect(() => {
+    if (optimistic && !optimistic.pending && optimistic.id !== params.id) clearOptimisticNote();
+  }, [optimistic, params.id]);
+
+  // Árvore inclui a nota otimista enquanto o servidor não confirma.
+  const allNotes = useMemo(
+    () =>
+      optimisticNote && !notes.some((n) => n.id === optimisticNote.id)
+        ? [...notes, optimisticNote]
+        : notes,
+    [notes, optimisticNote],
   );
-  const folders = useMemo(() => listFolders(notes), [notes]);
+  const activeNote = useMemo(
+    () => allNotes.find((n) => n.id === activeId) ?? null,
+    [allNotes, activeId],
+  );
+  const folders = useMemo(() => listFolders(allNotes), [allNotes]);
   const currentFolder = activeNote?.path ?? "";
 
   const [rawDialog, setDialog] = useState<DialogState>({ kind: "none" });
-  const dialog: DialogState = rawDialog.at === params.id ? rawDialog : { kind: "none" };
+  const dialog: DialogState = rawDialog.at === activeId ? rawDialog : { kind: "none" };
   const close = useCallback(() => setDialog({ kind: "none" }), []);
 
   const [toast, setToast] = useState<string | null>(null);
@@ -78,25 +113,35 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
   }, []);
 
   const [creating, startCreate] = useTransition();
+  // Criação otimista: a nota aparece na hora; o servidor grava em seguida e
+  // navega para /n/<id>, onde a página real "adota" o editor já aberto.
   const createNote = useCallback(
-    (path: string) =>
+    (path: string) => {
+      const id = crypto.randomUUID();
+      const title = nextFreeTitle(allNotes.filter((n) => n.path === path).map((n) => n.title));
+      startOptimisticNote({ id, path, title, updatedAt: new Date().toISOString() });
       startCreate(async () => {
-        const err = actionError(await createNoteAction(path));
-        if (err) showError(err);
-      }),
-    [showError],
+        const err = actionError(await createNoteAction({ id, path, title }));
+        if (err) {
+          failOptimisticNote(id, err);
+          showError(err);
+        }
+      });
+    },
+    [allNotes, showError],
   );
 
   const value: Vault = {
-    notes,
+    notes: allNotes,
     folders,
     activeNote,
+    optimisticNote,
     currentFolder,
     creating,
     createNote,
-    openNewFolder: () => setDialog({ kind: "folder", at: params.id }),
-    openMove: (note) => setDialog({ kind: "move", note, at: params.id }),
-    openDelete: (note) => setDialog({ kind: "delete", note, at: params.id }),
+    openNewFolder: () => setDialog({ kind: "folder", at: activeId }),
+    openMove: (note) => setDialog({ kind: "move", note, at: activeId }),
+    openDelete: (note) => setDialog({ kind: "delete", note, at: activeId }),
     showError,
   };
 
@@ -116,9 +161,9 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
         onSubmit={async (value) => {
           const path = normalizeFolder(value);
           if (!path) return "Informe o nome da pasta.";
-          const err = actionError(await createNoteAction(path));
-          if (!err) close();
-          return err;
+          close();
+          createNote(path);
+          return null;
         }}
       />
 
@@ -134,6 +179,7 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
         confirmLabel="Mover"
         onSubmit={async (value) => {
           if (dialog.kind !== "move") return null;
+          await whenCreated(dialog.note.id).catch(() => {});
           const err = actionError(await moveNoteAction(dialog.note.id, value));
           if (!err) close();
           return err;
@@ -155,6 +201,7 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
         confirmLabel="Excluir"
         onConfirm={async () => {
           if (dialog.kind !== "delete") return null;
+          await whenCreated(dialog.note.id).catch(() => {});
           const err = actionError(await deleteNoteAction(dialog.note.id));
           if (!err) close();
           return err;

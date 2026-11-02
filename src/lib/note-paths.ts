@@ -117,3 +117,12 @@ export function ancestorFolders(path: string): string[] {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isUuid = (s: string) => UUID_RE.test(s);
+
+/** Primeiro título livre: "Sem título", "Sem título 2", ... */
+export function nextFreeTitle(taken: Iterable<string>, base = DEFAULT_TITLE): string {
+  const set = new Set(taken);
+  if (!set.has(base)) return base;
+  for (let n = 2; ; n++) {
+    if (!set.has(`${base} ${n}`)) return `${base} ${n}`;
+  }
+}
