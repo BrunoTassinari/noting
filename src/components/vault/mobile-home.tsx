@@ -100,12 +100,12 @@ export function MobileHome() {
         </div>
       </div>
 
-      <div className="flex shrink-0 gap-2 px-4 pb-3">
+      <div className="grid shrink-0 grid-cols-2 gap-2 px-4 pb-3">
         {BUJO_SCREENS.map(({ href, label, Icon }) => (
           <Link
             key={href}
             href={href}
-            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-rail text-sm text-text active:bg-card"
+            className="flex h-11 min-w-0 items-center justify-center gap-2 rounded-xl border border-border bg-rail text-sm text-text active:bg-card"
           >
             <Icon size={18} className="text-accent" />
             {label}
