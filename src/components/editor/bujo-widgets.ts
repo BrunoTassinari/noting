@@ -1,18 +1,29 @@
 import { type EditorState, type Range, StateEffect, StateField } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView, WidgetType } from "@codemirror/view";
 import { DEFAULT_HABITS } from "@/lib/bujo";
+import { asList, asNumber, asScale, CLIMA, HUMOR, parseHabitsBlock, STRESS } from "@/lib/bujo-data";
 import { type FmValue, findFrontmatter, readFrontmatter, setFrontmatterKey } from "@/lib/frontmatter";
+import { el } from "./bujo-dom";
+import { HabitsWidget, HumorWidget } from "./bujo-month-widgets";
 
 // Blocos que viram interface quando o cursor não está neles:
 //   - frontmatter (--- ... ---) → painel de propriedades;
 //   - ```bujo-dia``` → formulário do dia (grava no frontmatter);
-//   - ```bujo-habits``` / ```bujo-humor``` → cartão (visualização ainda não feita).
+//   - ```bujo-habits``` → tabela de hábitos do mês (bujo-month-widgets.ts);
+//   - ```bujo-humor``` → gráfico de humor e resumos do mês.
 // Com o cursor dentro (ou clicando no painel), o texto cru volta para edição.
 // Decorações de bloco precisam vir de um StateField (não de um ViewPlugin).
 
 const setFocus = StateEffect.define<boolean>();
 
-type Block = { kind: "dia" | "habits" | "humor"; from: number; to: number; month?: string };
+type Block = {
+  kind: "dia" | "habits" | "humor";
+  from: number;
+  to: number;
+  month?: string;
+  /** Texto entre as cercas. */
+  inner: string;
+};
 
 /** Blocos ```bujo-*``` do documento. */
 export function findBujoBlocks(state: EditorState): Block[] {
@@ -27,7 +38,7 @@ export function findBujoBlocks(state: EditorState): Block[] {
     if (end > doc.lines) break; // bloco sem fechamento: deixa como texto
     const inner = doc.sliceString(line.to, doc.line(end).from);
     const month = /month:\s*(\d{4}-\d{2})/.exec(inner)?.[1];
-    out.push({ kind: m[1].slice(5) as Block["kind"], from: line.from, to: doc.line(end).to, month });
+    out.push({ kind: m[1].slice(5) as Block["kind"], from: line.from, to: doc.line(end).to, month, inner });
     l = end;
   }
   return out;
@@ -41,37 +52,11 @@ export function bujoRanges(state: EditorState): [number, number][] {
   return ranges;
 }
 
-// ---------- Escalas e opções do formulário (mesmas do plugin) ----------
-
-const HUMOR = ["Péssimo", "Ruim", "Ok", "Bom", "Ótimo"];
-const STRESS = ["Tranquilo", "Leve", "Moderado", "Alto", "Muito alto"];
-const CLIMA = ["sol", "parcial", "nublado", "chuva", "tempestade", "neblina", "vento", "frio"];
-
-const asScale = (v: FmValue | undefined) => {
-  const n = typeof v === "string" ? Number(v) : NaN;
-  return Number.isInteger(n) && n >= 1 && n <= 5 ? n : null;
-};
-const asNumber = (v: FmValue | undefined) => {
-  if (typeof v !== "string" || v.trim() === "") return null;
-  const n = Number(v.replace(",", "."));
-  return Number.isFinite(n) ? n : null;
-};
-const asList = (v: FmValue | undefined) => (Array.isArray(v) ? v : typeof v === "string" && v ? [v] : []);
+// ---------- Formulário (escalas e opções em src/lib/bujo-data.ts) ----------
 
 function setKey(view: EditorView, key: string, value: FmValue | null) {
   const change = setFrontmatterKey(view.state.doc.toString(), key, value);
   if (change) view.dispatch({ changes: change, userEvent: "input.bujo" });
-}
-
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  cls: string,
-  text?: string,
-): HTMLElementTagNameMap[K] {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (text !== undefined) e.textContent = text;
-  return e;
 }
 
 function row(label: string, content: HTMLElement): HTMLElement {
@@ -217,45 +202,10 @@ class PropertiesWidget extends WidgetType {
   }
 }
 
-const MONTHS_LABEL = (iso?: string) => {
-  if (!iso) return "";
-  const [y, m] = iso.split("-").map(Number);
-  const names = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
-  return ` · ${names[m - 1] ?? ""} ${y}`;
-};
-
-/** ```bujo-habits``` e ```bujo-humor```: por enquanto, um cartão neutro. */
-class PlaceholderWidget extends WidgetType {
-  constructor(readonly kind: "habits" | "humor", readonly month: string | undefined, readonly editAt: number) {
-    super();
-  }
-  eq(o: PlaceholderWidget) {
-    return o.kind === this.kind && o.month === this.month && o.editAt === this.editAt;
-  }
-  toDOM(view: EditorView) {
-    const root = el("div", "cm-bujo-card cm-bujo-placeholder");
-    root.setAttribute("role", "button");
-    const title = this.kind === "habits" ? "Hábitos" : "Humor e temperatura";
-    root.append(
-      el("div", "cm-bujo-title", title + MONTHS_LABEL(this.month)),
-      el(
-        "div",
-        "cm-bujo-hint",
-        this.kind === "habits"
-          ? "A tabela de hábitos ainda não está disponível no Noting. O bloco está preservado."
-          : "O gráfico do mês ainda não está disponível no Noting. O bloco está preservado.",
-      ),
-    );
-    root.addEventListener("mousedown", (e) => {
-      e.preventDefault();
-      view.dispatch({ selection: { anchor: this.editAt } });
-      view.focus();
-    });
-    return root;
-  }
-  ignoreEvent() {
-    return true;
-  }
+/** Hábitos do ```bujo-habits``` do mesmo mês nesta nota (null = nenhum). */
+function habitsFor(blocks: Block[], month: string | undefined): string[] | null {
+  const b = blocks.find((x) => x.kind === "habits" && x.month === month);
+  return b && month ? parseHabitsBlock(b.inner).habits : null;
 }
 
 type FieldValue = { focused: boolean; decos: DecorationSet };
@@ -297,9 +247,10 @@ function build(state: EditorState, focused: boolean): DecorationSet {
 
   for (const b of blocks) {
     if (touches(state, focused, b.from, b.to)) continue; // o live preview mostra como código
-    const editAt = state.doc.lineAt(b.from).to;
-    const widget =
-      b.kind === "dia" ? new DayFormWidget(values) : new PlaceholderWidget(b.kind, b.month, editAt);
+    let widget: WidgetType;
+    if (b.kind === "dia") widget = new DayFormWidget(values);
+    else if (b.kind === "habits") widget = new HabitsWidget(b.month ?? null, parseHabitsBlock(b.inner).habits);
+    else widget = new HumorWidget(b.month ?? null, habitsFor(blocks, b.month));
     decos.push(Decoration.replace({ widget, block: true }).range(b.from, b.to));
   }
   return Decoration.set(decos, true);
