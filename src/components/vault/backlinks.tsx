@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { Fragment } from "react";
 import { displayFolder } from "@/lib/note-paths";
 import { type Backlink, WIKILINK_RE } from "@/lib/wikilinks";
+import { NoteLink } from "./note-link";
 
 /** Trecho com os [[links]] destacados (mostra o apelido quando houver). */
 function Snippet({ text }: { text: string }) {
@@ -43,9 +43,8 @@ export function Backlinks({ items }: { items: Backlink[] }) {
         <ul className="flex flex-col gap-2">
           {items.map((b) => (
             <li key={b.id}>
-              <Link
-                href={`/n/${b.id}`}
-                prefetch={false}
+              <NoteLink
+                id={b.id}
                 className="block rounded-lg bg-card px-3 py-2.5 hover:bg-active"
               >
                 <div className="truncate text-[13px] font-medium text-text">{b.title}</div>
@@ -55,7 +54,7 @@ export function Backlinks({ items }: { items: Backlink[] }) {
                     <Snippet text={b.snippet} />
                   </div>
                 )}
-              </Link>
+              </NoteLink>
             </li>
           ))}
         </ul>

@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { renameNoteAction, saveNoteBodyAction } from "@/app/(vault)/actions";
 import {
@@ -32,7 +31,7 @@ import { MobileToolbar } from "./mobile-toolbar";
 import { Outline } from "./outline";
 import { Sheet } from "./sheet";
 import { Menu } from "./menu";
-import { whenCreated } from "./optimistic-note";
+import { markEdited, whenCreated } from "./optimistic-note";
 import { actionError, useVault } from "./vault-context";
 
 type SaveStatus = "saved" | "pending" | "saving" | "error";
@@ -325,14 +324,13 @@ function BodyEditor({
   onCursorLine: (line: number) => void;
   onReady: (api: EditorApi) => void;
 }) {
-  const { notes, createNote } = useVault();
-  const router = useRouter();
+  const { notes, createNote, goToNote } = useVault();
   const [ready, setReady] = useState(false);
 
   const openWikilink = (target: string) => {
     const found = resolveWikilink(notes, target, note.path);
     if (found) {
-      if (found.id !== note.id) router.push(`/n/${found.id}`);
+      if (found.id !== note.id) goToNote(found.id);
       return;
     }
     // Como no Obsidian: link para nota inexistente cria a nota (na raiz).
@@ -427,10 +425,11 @@ function useAutosave(
     (value: string) => {
       setBodyState(value);
       latest.current = value;
+      markEdited(noteId);
       setStatus((s) => (s === "error" ? s : "pending"));
       schedule(SAVE_DELAY_MS);
     },
-    [schedule],
+    [schedule, noteId],
   );
 
   useEffect(() => {

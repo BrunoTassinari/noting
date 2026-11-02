@@ -1,13 +1,14 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { signOut } from "@/app/login/actions";
 import { FolderIcon, LogoutIcon, SearchIcon } from "@/components/icons";
 import type { NoteMeta } from "@/lib/note-paths";
 import { MobileHome } from "./mobile-home";
 import { Sidebar } from "./sidebar";
 import { useVisualViewport } from "./use-visual-viewport";
+import { NoteSkeleton } from "./note-skeleton";
 import { NoteView } from "./note-view";
 import { useVault, VaultProvider } from "./vault-context";
 
@@ -24,6 +25,12 @@ function Layout({ children }: { children: ReactNode }) {
   const routeId = useParams<{ id?: string }>().id;
   const noteOpen = Boolean(routeId || optimisticNote);
   const viewport = useVisualViewport();
+
+  // Baixa o código do editor em segundo plano: a primeira nota já abre pronta.
+  useEffect(() => {
+    const t = setTimeout(() => void import("@/components/editor/markdown-editor"), 1500);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
     <div
@@ -79,8 +86,17 @@ function Layout({ children }: { children: ReactNode }) {
 
       {/* Coluna principal */}
       <main className={`min-h-0 min-w-0 flex-1 flex-col md:flex ${noteOpen ? "flex" : "hidden"}`}>
-        {/* Nota recém-criada: aparece já, e continua aqui quando a página real chega. */}
-        {optimisticNote && <NoteView key={optimisticNote.id} note={optimisticNote} isNew />}
+        {/* Nota aberta/criada antes do servidor responder; continua aqui quando a página chega. */}
+        {optimisticNote &&
+          (optimisticNote.mode === "skeleton" ? (
+            <NoteSkeleton note={optimisticNote} />
+          ) : (
+            <NoteView
+              key={`${optimisticNote.id}:${optimisticNote.version}`}
+              note={optimisticNote}
+              isNew={optimisticNote.mode === "create"}
+            />
+          ))}
         <div className={optimisticNote ? "hidden" : "contents"}>{children}</div>
       </main>
     </div>

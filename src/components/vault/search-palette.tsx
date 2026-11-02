@@ -1,11 +1,12 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NoteIcon, PlusIcon, SearchIcon } from "@/components/icons";
 import { findTerms, fold, searchTerms } from "@/lib/fold";
 import { displayFolder, type NoteMeta } from "@/lib/note-paths";
 import type { SearchResult } from "@/server/search";
+import { prefetchNote } from "./note-cache";
+import { useVault } from "./vault-context";
 
 type Item =
   | { kind: "note"; id: string; title: string; path: string; snippet: string; titleMatches: [number, number][]; snippetMatches: [number, number][] }
@@ -76,7 +77,7 @@ function Palette({
   onClose: () => void;
   onCreate: (title: string) => void;
 }) {
-  const router = useRouter();
+  const { goToNote } = useVault();
   const [query, setQuery] = useState("");
   const [server, setServer] = useState<{ q: string; results: SearchResult[] } | null>(null);
   const [failed, setFailed] = useState(false);
@@ -137,10 +138,18 @@ function Palette({
     listRef.current?.querySelector<HTMLElement>(`[data-index="${current}"]`)?.scrollIntoView({ block: "nearest" });
   }, [current]);
 
+  // Adianta a nota selecionada (setas/mouse) para abrir na hora no Enter.
+  const currentId = items[current]?.kind === "note" ? (items[current] as { id: string }).id : null;
+  useEffect(() => {
+    if (!currentId) return;
+    const t = setTimeout(() => void prefetchNote(currentId), 120);
+    return () => clearTimeout(t);
+  }, [currentId]);
+
   const choose = (item: Item | undefined) => {
     if (!item) return;
     onClose();
-    if (item.kind === "note") router.push(`/n/${item.id}`);
+    if (item.kind === "note") goToNote(item.id);
     else onCreate(item.title);
   };
 

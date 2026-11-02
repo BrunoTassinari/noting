@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo } from "react";
 import {
   ChevronDownIcon,
@@ -11,6 +10,7 @@ import {
   SearchIcon,
 } from "@/components/icons";
 import { ancestorFolders, buildTree, type FolderNode, type NoteMeta } from "@/lib/note-paths";
+import { NoteLink } from "./note-link";
 import { expandFolders, toggleFolder, useExpandedFolders } from "./expanded-store";
 import { useVault } from "./vault-context";
 
@@ -156,9 +156,8 @@ function FolderRow({
 function NoteRow({ note, indent, active }: { note: NoteMeta; indent: number; active: boolean }) {
   return (
     <li>
-      <Link
-        href={`/n/${note.id}`}
-        prefetch={false}
+      <NoteLink
+        id={note.id}
         aria-current={active ? "page" : undefined}
         style={{ paddingLeft: indent }}
         className={`${rowBase} ${
@@ -166,7 +165,7 @@ function NoteRow({ note, indent, active }: { note: NoteMeta; indent: number; act
         }`}
       >
         <span className="truncate">{note.title}</span>
-      </Link>
+      </NoteLink>
     </li>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   createContext,
   use,
@@ -27,10 +27,12 @@ import {
 } from "@/lib/note-paths";
 import { makeExcerpt } from "@/lib/markdown-text";
 import { ConfirmDialog, PromptDialog } from "./dialogs";
+import { getCachedNote, updateCachedBody } from "./note-cache";
 import { SearchPalette } from "./search-palette";
 import {
   clearOptimisticNote,
   failOptimisticNote,
+  startOpeningNote,
   startOptimisticNote,
   useOptimisticNote,
   whenCreated,
@@ -53,6 +55,10 @@ type Vault = {
   openMove: (note: NoteMeta) => void;
   openDelete: (note: NoteMeta) => void;
   showError: (message: string) => void;
+  /** Mostra a nota na hora (do cache, ou um esqueleto). Chame no clique de um link. */
+  openNote: (id: string) => void;
+  /** openNote + navega (para quem não usa <Link>). */
+  goToNote: (id: string) => void;
   /** Uma nota foi salva: atualiza resumo e data na lista sem ir ao servidor. */
   touchNote: (id: string, body: string) => void;
 };
@@ -81,19 +87,25 @@ type DialogState = { at?: string } & (
 
 export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children: ReactNode }) {
   const params = useParams<{ id?: string }>();
+  const router = useRouter();
   const optimistic = useOptimisticNote();
   const optimisticNote =
-    optimistic && (optimistic.pending || optimistic.id === params.id) ? optimistic : null;
+    optimistic && (optimistic.pending || optimistic.opening || optimistic.id === params.id)
+      ? optimistic
+      : null;
   const activeId = optimisticNote?.id ?? params.id;
 
-  // Saiu da nota recém-criada: daqui em diante ela vem do servidor.
+  // Saiu da nota: daqui em diante ela vem do servidor.
   useEffect(() => {
-    if (optimistic && !optimistic.pending && optimistic.id !== params.id) clearOptimisticNote();
+    if (optimistic && !optimistic.pending && !optimistic.opening && optimistic.id !== params.id) {
+      clearOptimisticNote();
+    }
   }, [optimistic, params.id]);
 
   // Saves recentes (o layout não é recarregado a cada autosave).
   const [touched, setTouched] = useState<Record<string, { updatedAt: string; excerpt: string }>>({});
   const touchNote = useCallback((id: string, body: string) => {
+    updateCachedBody(id, body);
     setTouched((t) => ({ ...t, [id]: { updatedAt: new Date().toISOString(), excerpt: makeExcerpt(body) } }));
   }, []);
 
@@ -162,6 +174,22 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
     [allNotes, showError],
   );
 
+  const openNote = useCallback(
+    (id: string) => {
+      if (id === activeId) return;
+      const meta = allNotes.find((n) => n.id === id);
+      if (meta) startOpeningNote(meta, getCachedNote(id));
+    },
+    [activeId, allNotes],
+  );
+  const goToNote = useCallback(
+    (id: string) => {
+      openNote(id);
+      router.push(`/n/${id}`);
+    },
+    [openNote, router],
+  );
+
   const value: Vault = {
     notes: allNotes,
     folders,
@@ -173,6 +201,8 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
     openNewFolder: () => setDialog({ kind: "folder", at: activeId }),
     openSearch: () => setSearchOpen(true),
     touchNote,
+    openNote,
+    goToNote,
     openMove: (note) => setDialog({ kind: "move", note, at: activeId }),
     openDelete: (note) => setDialog({ kind: "delete", note, at: activeId }),
     showError,

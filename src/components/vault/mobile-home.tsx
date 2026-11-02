@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { signOut } from "@/app/login/actions";
 import {
   FolderPlusIcon,
@@ -14,6 +13,8 @@ import {
 import { displayFolder } from "@/lib/note-paths";
 import { relativeTime } from "@/lib/relative-time";
 import { Menu } from "./menu";
+import { prefetchNote } from "./note-cache";
+import { NoteLink } from "./note-link";
 import { Tree } from "./sidebar";
 import { useVault } from "./vault-context";
 
@@ -25,6 +26,23 @@ export function MobileHome() {
     () => [...notes].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
     [notes],
   );
+
+  // No celular não há "passar o mouse": adianta as notas mais recentes,
+  // uma de cada vez, depois que a tela já apareceu.
+  const topIds = recent.slice(0, 5).map((n) => n.id).join(",");
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      for (const id of topIds.split(",").filter(Boolean)) {
+        if (cancelled) return;
+        await prefetchNote(id);
+      }
+    }, 800);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [topIds]);
 
   return (
     <div className="relative flex h-full min-h-0 flex-col bg-panel">
@@ -91,9 +109,8 @@ export function MobileHome() {
           <ul>
             {recent.map((n) => (
               <li key={n.id}>
-                <Link
-                  href={`/n/${n.id}`}
-                  prefetch={false}
+                <NoteLink
+                  id={n.id}
                   className="block border-b border-border px-1 py-3.5 active:bg-card"
                 >
                   <div className="flex items-baseline gap-2">
@@ -108,7 +125,7 @@ export function MobileHome() {
                     <p className="mt-0.5 line-clamp-2 text-sm leading-[1.45] text-[#a3a8b5]">{n.excerpt}</p>
                   )}
                   <div className="mt-1 truncate text-xs text-accent">{displayFolder(n.path)}</div>
-                </Link>
+                </NoteLink>
               </li>
             ))}
           </ul>
