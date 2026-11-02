@@ -41,6 +41,9 @@ export async function rebuildLinks(q: DbLike, userId: string, fromIds: string[])
   }
 
   await q.delete(links).where(and(eq(links.userId, userId), inArray(links.fromId, ids)));
-  if (rows.length) await q.insert(links).values(rows).onConflictDoNothing();
+  // Em lotes: o Postgres limita parâmetros por consulta (vaults grandes).
+  for (let i = 0; i < rows.length; i += 1000) {
+    await q.insert(links).values(rows.slice(i, i + 1000)).onConflictDoNothing();
+  }
 }
 

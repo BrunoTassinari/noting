@@ -58,6 +58,29 @@ O service worker (`public/sw.js`) não guarda notas em cache: elas sempre
 vêm do servidor. Sem internet, aparece a página `offline.html`. Ele só é
 registrado no build de produção (`npm run build && npm start`).
 
+## Importar seu vault (.md)
+
+Copia as notas de uma pasta de arquivos Markdown (ex.: um vault do
+Obsidian) para o app. **Os arquivos originais não são alterados.**
+
+```bash
+# 1) Veja o que seria importado, sem gravar nada
+DATABASE_URL="postgresql://..." npm run import-vault -- "/caminho/do/vault" --email voce@exemplo.com --dry-run
+
+# 2) Importe de verdade
+DATABASE_URL="postgresql://..." npm run import-vault -- "/caminho/do/vault" --email voce@exemplo.com
+```
+
+- `Pasta/Sub/Nota.md` vira a nota "Nota" na pasta `Pasta/Sub`.
+- Pastas ocultas (`.obsidian`, `.trash`, `.git`) e arquivos que não são
+  `.md` (imagens, PDFs) são ignorados e listados no resumo.
+- O conteúdo fica igual (frontmatter incluído); só as quebras de linha do
+  Windows viram `\n`. A data de modificação do arquivo vira a data da nota.
+- Se já existir uma nota com o mesmo nome na mesma pasta, ela é pulada.
+  Use `--overwrite` para substituir o conteúdo pelo do arquivo.
+- No fim, os links e backlinks são reconstruídos. Pode rodar quantas vezes
+  quiser.
+
 ## Comandos úteis
 
 | Comando | Para quê |
@@ -65,6 +88,7 @@ registrado no build de produção (`npm run build && npm start`).
 | `npm run db:migrate` | Aplica as migrations pendentes (rode depois de atualizar o app) |
 | `npm run create-user -- email "senha" "Nome"` | Cria usuário ou redefine a senha |
 | `npm run reindex-links` | Reconstrói a tabela de links/backlinks a partir dos `[[links]]` |
+| `npm run import-vault -- <pasta> --email <e-mail>` | Importa uma pasta de `.md` (veja acima) |
 
 Para rodar contra o banco de produção, prefixe com `DATABASE_URL="postgresql://..."`.
 
