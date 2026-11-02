@@ -119,7 +119,9 @@ export function MigrateScreen() {
               className="flex h-11 shrink-0 items-center gap-2 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-ink hover:opacity-90 disabled:opacity-60 md:h-8"
             >
               <MigrateIcon size={16} />
-              Migrar tudo<span className="hidden sm:inline"> para hoje</span>
+              <span>
+                Migrar tudo<span className="hidden sm:inline"> para hoje</span>
+              </span>
             </button>
           )
         }

@@ -215,12 +215,12 @@ export function UndoIcon(props: IconProps) {
   );
 }
 
-/** Tarefa migrada: caixa com seta para a direita. */
+/** Tarefa migrada: caixa de tarefa com seta para a direita. */
 export function MigrateIcon(props: IconProps) {
   return (
     <Base {...props}>
-      <path d="M14 4H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h7" />
-      <path d="M10 12h10M17 9l3 3-3 3" />
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+      <path d="M8 12h8M12.5 8.5 16 12l-3.5 3.5" />
     </Base>
   );
 }

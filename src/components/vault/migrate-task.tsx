@@ -106,6 +106,8 @@ export function MigrateTaskSheet({
     try {
       await whenCreated(noteId);
       const res = await moveToDestinationAction(noteId, dest, isoDay(now), plan.dest);
+      // Fecha antes do aviso: o modal ficaria por cima dele.
+      onClose();
       if (!res.ok) {
         showError(res.error);
         return;
@@ -117,8 +119,8 @@ export function MigrateTaskSheet({
       } else {
         showError(`Gravado em ${res.dest.title}, mas o texto mudou aqui: marque a origem à mão.`);
       }
-      onClose();
     } catch {
+      onClose();
       showError("Não foi possível migrar. Tente de novo.");
     } finally {
       setBusy(false);
