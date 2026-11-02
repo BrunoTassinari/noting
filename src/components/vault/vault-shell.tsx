@@ -27,7 +27,8 @@ function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div
-      className="fixed inset-x-0 top-0 flex h-dvh min-h-0 w-full overflow-hidden bg-bg"
+      // pt: área da barra de status quando instalado no iPhone (tela cheia).
+      className="fixed inset-x-0 top-0 flex h-dvh min-h-0 w-full overflow-hidden bg-bg pt-[env(safe-area-inset-top)]"
       // Acompanha a área visível (teclado aberto no celular).
       style={
         viewport ? { height: viewport.height, transform: `translateY(${viewport.offsetTop}px)` } : undefined

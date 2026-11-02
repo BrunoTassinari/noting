@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
+import { ServiceWorkerRegistration } from "@/components/service-worker";
 import "./globals.css";
 
 const inter = Inter({
@@ -15,6 +16,10 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Noting",
   description: "Notas pessoais em Markdown",
+  applicationName: "Noting",
+  // iPhone: abre em tela cheia quando adicionado à tela de início.
+  appleWebApp: { capable: true, title: "Noting", statusBarStyle: "black-translucent" },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
@@ -35,6 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col text-sm leading-normal">
         {children}
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );

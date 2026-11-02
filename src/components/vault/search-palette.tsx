@@ -148,7 +148,7 @@ function Palette({
 
   return (
     <div className="flex h-full flex-col md:h-auto md:max-h-[calc(70vh-2px)]">
-      <div className="flex items-center gap-3 border-b border-border px-4">
+      <div className="flex items-center gap-3 border-b border-border px-4 pt-[env(safe-area-inset-top)] md:pt-0">
         <SearchIcon size={18} className="shrink-0 text-muted" />
         <input
           autoFocus

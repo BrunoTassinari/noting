@@ -28,7 +28,7 @@ export function MobileHome() {
 
   return (
     <div className="relative flex h-full min-h-0 flex-col bg-panel">
-      <header className="flex shrink-0 items-center gap-1 pb-2 pl-5 pr-2 pt-[max(14px,env(safe-area-inset-top))]">
+      <header className="flex shrink-0 items-center gap-1 pb-2 pl-5 pr-2 pt-3.5">
         <h1 className="flex-1 text-[26px] font-semibold leading-tight text-text-strong">Notas</h1>
         <button
           type="button"

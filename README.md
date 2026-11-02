@@ -46,6 +46,18 @@ navegador do PC e no celular (PWA).
    DATABASE_URL="postgresql://..." npm run create-user -- voce@exemplo.com "senha"
    ```
 
+## Instalar como app (PWA)
+
+Abra o endereço do app (precisa ser HTTPS, como na Vercel) e:
+
+- **iPhone/iPad (Safari):** Compartilhar → **Adicionar à Tela de Início**.
+- **Android (Chrome):** menu ⋮ → **Instalar app** (ou o aviso que aparece embaixo).
+- **PC (Chrome/Edge):** ícone de instalar na barra de endereço.
+
+O service worker (`public/sw.js`) não guarda notas em cache: elas sempre
+vêm do servidor. Sem internet, aparece a página `offline.html`. Ele só é
+registrado no build de produção (`npm run build && npm start`).
+
 ## Comandos úteis
 
 | Comando | Para quê |
