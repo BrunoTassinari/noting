@@ -38,6 +38,13 @@ export type EditorApi = {
   goToLine: (line: number) => void;
   /** Formatação da barra de ferramentas (negrito, lista, link...). */
   format: (kind: FormatKind) => void;
+  /** Linhas do texto e as da seleção principal (0…, inclusivo). */
+  lineSelection: () => { lines: string[]; from: number; to: number };
+  /**
+   * Troca as linhas [start, end] (0…) por `replacement` (vazio = remove),
+   * se elas ainda forem `expected`. false = o texto mudou; nada foi feito.
+   */
+  replaceLines: (start: number, end: number, expected: string[], replacement: string[]) => boolean;
 };
 
 /**
@@ -134,6 +141,29 @@ export default function MarkdownEditor({
         view.focus();
       },
       format: (kind) => runFormat(view, kind),
+      lineSelection() {
+        const { doc, selection } = view.state;
+        const { from, to } = selection.main;
+        const first = doc.lineAt(from);
+        let last = doc.lineAt(to);
+        // Seleção que termina no começo de uma linha não a inclui.
+        if (to > from && to === last.from && last.number > first.number) last = doc.line(last.number - 1);
+        return { lines: doc.toString().split("\n"), from: first.number - 1, to: last.number - 1 };
+      },
+      replaceLines(start, end, expected, replacement) {
+        const { doc } = view.state;
+        if (start < 0 || end >= doc.lines || end - start + 1 !== expected.length) return false;
+        for (let i = start; i <= end; i++) if (doc.line(i + 1).text !== expected[i - start]) return false;
+        let from = doc.line(start + 1).from;
+        let to = doc.line(end + 1).to;
+        if (replacement.length === 0) {
+          // Remove as linhas inteiras, com a quebra de linha.
+          if (end + 1 < doc.lines) to += 1;
+          else if (start > 0) from -= 1;
+        }
+        view.dispatch({ changes: { from, to, insert: replacement.join("\n") }, scrollIntoView: true });
+        return true;
+      },
     });
     return () => view.destroy();
     // Não controlado: recria só se o componente remontar (troca de nota).

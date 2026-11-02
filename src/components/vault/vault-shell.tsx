@@ -1,6 +1,7 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import Link from "next/link";
+import { useParams, usePathname } from "next/navigation";
 import { type ReactNode, useEffect } from "react";
 import { signOut } from "@/app/login/actions";
 import {
@@ -11,6 +12,7 @@ import {
   LogoutIcon,
   SearchIcon,
 } from "@/components/icons";
+import { BUJO_SCREENS } from "./bujo-screens";
 import type { NoteMeta } from "@/lib/note-paths";
 import { MobileHome } from "./mobile-home";
 import { Sidebar } from "./sidebar";
@@ -31,7 +33,10 @@ export function VaultShell({ notes, children }: { notes: NoteMeta[]; children: R
 function Layout({ children }: { children: ReactNode }) {
   const { optimisticNote, openSearch } = useVault();
   const routeId = useParams<{ id?: string }>().id;
-  const noteOpen = Boolean(routeId || optimisticNote);
+  const pathname = usePathname();
+  // Telas do Bullet Journal ocupam a coluna principal (no celular, a tela toda).
+  const screen = BUJO_SCREENS.find((s) => pathname === s.href)?.href;
+  const noteOpen = Boolean(routeId || optimisticNote || screen);
   const viewport = useVisualViewport();
   const { openPeriodic } = usePeriodicNotes();
 
@@ -86,6 +91,20 @@ function Layout({ children }: { children: ReactNode }) {
           >
             {icon}
           </button>
+        ))}
+        {BUJO_SCREENS.map(({ href, label, Icon }) => (
+          <Link
+            key={href}
+            href={href}
+            aria-label={label}
+            title={label}
+            aria-current={screen === href ? "page" : undefined}
+            className={`flex size-9 items-center justify-center rounded-lg hover:bg-card hover:text-text ${
+              screen === href ? "bg-card text-accent" : "text-muted"
+            }`}
+          >
+            <Icon size={18} />
+          </Link>
         ))}
         <div className="flex-1" />
         <form action={signOut}>

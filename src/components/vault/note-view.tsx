@@ -5,12 +5,14 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { renameNoteAction, saveNoteBodyAction } from "@/app/(vault)/actions";
 import {
+  CancelTaskIcon,
   CloseIcon,
   CloudAlertIcon,
   CloudCheckIcon,
   LinkIcon,
   ListIcon,
   MenuIcon,
+  MigrateIcon,
   MoreIcon,
   MoveIcon,
   PencilIcon,
@@ -32,6 +34,7 @@ import { MobileToolbar } from "./mobile-toolbar";
 import { Outline } from "./outline";
 import { Sheet } from "./sheet";
 import { Menu } from "./menu";
+import { cancelTasks, MigrateTaskSheet } from "./migrate-task";
 import { updateCachedBody } from "./note-cache";
 import { PeriodicArrow, PeriodicNav, usePeriodicMenuItems } from "./periodic-nav";
 import { markEdited, whenCreated } from "./optimistic-note";
@@ -64,6 +67,7 @@ export function NoteView({
   const [panels, setPanels] = useState({ backlinks: true, outline: true });
 
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [migrateOpen, setMigrateOpen] = useState(false);
   const backlinkCount = note.backlinks?.length ?? 0;
 
   const periodicItems = usePeriodicMenuItems(note);
@@ -74,6 +78,15 @@ export function NoteView({
       icon: <LinkIcon size={15} />,
       className: "lg:hidden",
       onSelect: () => setSheetOpen(true),
+    },
+    { label: "Migrar tarefa…", icon: <MigrateIcon size={15} />, onSelect: () => setMigrateOpen(true) },
+    {
+      label: "Cancelar tarefa",
+      icon: <CancelTaskIcon size={15} />,
+      onSelect: () => {
+        const err = editorApi.current && cancelTasks(editorApi.current);
+        if (err) showError(err);
+      },
     },
     { label: "Renomear", icon: <PencilIcon size={15} />, onSelect: () => titleRef.current?.focus() },
     { label: "Mover para…", icon: <MoveIcon size={15} />, onSelect: () => openMove(note) },
@@ -229,6 +242,13 @@ export function NoteView({
           />
         </div>
       </Sheet>
+
+      <MigrateTaskSheet
+        open={migrateOpen}
+        onClose={() => setMigrateOpen(false)}
+        noteId={note.id}
+        editor={editorApi}
+      />
 
       {/* Barra de status (desktop) */}
       <div className="hidden h-7 shrink-0 items-center gap-4 border-t border-border bg-rail px-4 text-xs text-muted md:flex">
