@@ -105,14 +105,14 @@ export function CaptureSync() {
       {offline ? (
         <div
           role="status"
-          className="pointer-events-auto flex min-h-11 items-center gap-2 rounded-full border border-border bg-surface pl-3.5 text-[13px] text-muted shadow-lg"
+          className="pointer-events-auto flex min-h-11 max-w-full items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-surface pl-3 text-xs text-muted shadow-lg"
         >
           <CloudOffIcon />
           <span>Sem conexão — capturas ficam guardadas</span>
           {/* <a> comum: a navegação passa pelo service worker, que serve a página offline. */}
           <a
             href="/offline.html"
-            className="flex min-h-11 items-center rounded-full px-3.5 font-medium text-accent hover:bg-card"
+            className="flex min-h-11 items-center rounded-full px-2.5 font-medium text-accent hover:bg-card"
           >
             Capturar
           </a>

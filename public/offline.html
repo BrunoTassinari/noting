@@ -8,6 +8,7 @@
 <style>
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body {
     margin: 0; min-height: 100dvh; background: #16171b; color: #dcdee4;
     font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.5;
@@ -68,7 +69,7 @@
   </header>
 
   <form id="form">
-    <label for="text">Captura rápida — vai para a nota do dia quando a internet voltar</label>
+    <label for="text">Captura rápida — vai para o fim da nota do dia</label>
     <textarea id="text" name="text" maxlength="5000" placeholder="Escreva uma ideia, tarefa ou lembrete" enterkeyhint="done"></textarea>
     <div class="row">
       <span class="hint" id="hint"></span>
