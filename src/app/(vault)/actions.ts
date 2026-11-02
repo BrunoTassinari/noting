@@ -9,6 +9,7 @@ import {
   moveNote,
   NoteError,
   renameNote,
+  saveConflictCopy,
   updateNoteBody,
 } from "@/server/notes";
 
@@ -52,16 +53,45 @@ export async function createNoteAction(input: {
   redirect(`/n/${id}`);
 }
 
+export type SaveResult =
+  | { ok: true }
+  | { ok: false; error: string }
+  /** A nota mudou em outro aparelho desde `baseHash`; nada foi gravado. */
+  | { ok: false; conflict: true }
+  /** onConflict "copy": o texto foi guardado numa nota nova com este nome. */
+  | { ok: true; copiedTo: string };
+
+/**
+ * Salva o corpo. `baseHash` (SHA-256 do corpo de onde o editor partiu)
+ * protege contra sobrescrever o que foi escrito em outro aparelho:
+ *   - sem baseHash → sobrescreve ("Manter a minha");
+ *   - onConflict "report" → devolve { conflict } para o editor perguntar;
+ *   - onConflict "copy" → guarda o texto numa nota "(conflito)" (ao sair da nota).
+ */
 export async function saveNoteBodyAction(
   id: string,
   body: string,
-  linksChanged = true,
-): Promise<ActionResult> {
+  opts: { linksChanged?: boolean; baseHash?: string; onConflict?: "report" | "copy" } = {},
+): Promise<SaveResult> {
   if (typeof body !== "string" || body.length > MAX_BODY_LENGTH) {
     return { ok: false, error: "Nota grande demais para salvar." };
   }
-  // Sem refresh: a árvore não depende do conteúdo.
-  return run((userId) => updateNoteBody(userId, id, body, linksChanged), { refresh: false });
+  const user = await requireUser();
+  try {
+    const res = await updateNoteBody(user.id, id, body, {
+      relink: opts.linksChanged ?? true,
+      baseHash: opts.baseHash,
+    });
+    if (res.ok) return { ok: true }; // sem refresh: a árvore não depende do conteúdo
+    if (opts.onConflict !== "copy") return { ok: false, conflict: true };
+    const copy = await saveConflictCopy(user.id, id, body);
+    refresh();
+    return { ok: true, copiedTo: copy.title };
+  } catch (err) {
+    if (err instanceof NoteError) return { ok: false, error: err.message };
+    console.error(err);
+    return { ok: false, error: "Algo deu errado. Tente de novo." };
+  }
 }
 
 export async function renameNoteAction(id: string, title: string): Promise<ActionResult> {

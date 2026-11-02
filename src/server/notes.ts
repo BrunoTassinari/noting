@@ -142,14 +142,56 @@ async function updateOwned(
   }
 }
 
+/** Hash do corpo calculado no banco (igual ao SHA-256 hex do cliente). */
+const bodyHash = sql<string>`encode(sha256(convert_to(${notes.body}, 'UTF8')), 'hex')`;
+
+export type SaveBodyResult = { ok: true; meta: NoteMeta } | { ok: false; conflict: true };
+
 /**
  * Salva o corpo. `relink` = os [[links]] mudaram desde o último save (o
  * cliente compara); só então a tabela links é reconstruída.
+ *
+ * `baseHash` = hash do corpo de onde o cliente partiu. Se o corpo no banco
+ * mudou desde então (editado em outro aparelho), NÃO grava e devolve
+ * conflito. Sem `baseHash`, sobrescreve.
  */
-export async function updateNoteBody(userId: string, id: string, body: string, relink = true) {
-  const meta = await updateOwned(userId, id, { body });
+export async function updateNoteBody(
+  userId: string,
+  id: string,
+  body: string,
+  opts: { relink?: boolean; baseHash?: string } = {},
+): Promise<SaveBodyResult> {
+  if (!isUuid(id)) throw new NoteError("Nota não encontrada.");
+  const { relink = true, baseHash } = opts;
+  const where = and(
+    eq(notes.userId, userId),
+    eq(notes.id, id),
+    baseHash ? sql`${bodyHash} = ${baseHash}` : undefined,
+  );
+  const [row] = await db.update(notes).set({ body }).where(where).returning(metaColumns);
+  if (!row) {
+    if (baseHash && (await getNote(userId, id))) return { ok: false, conflict: true };
+    throw new NoteError("Nota não encontrada.");
+  }
   if (relink) await rebuildLinks(db, userId, [id]);
-  return meta;
+  return { ok: true, meta: toMeta(row) };
+}
+
+/**
+ * Conflito ao sair da nota (não há como perguntar): guarda o texto local
+ * numa nota irmã "Título (conflito)" e devolve o nome dela.
+ */
+export async function saveConflictCopy(userId: string, id: string, body: string): Promise<NoteMeta> {
+  const original = await getNote(userId, id);
+  if (!original) throw new NoteError("Nota não encontrada.");
+  const base = `${original.title.slice(0, 180)} (conflito)`;
+  const title = await freeTitle(userId, original.path, base);
+  const [row] = await db
+    .insert(notes)
+    .values({ userId, path: original.path, title, body })
+    .returning(metaColumns);
+  await rebuildLinks(db, userId, [row.id]);
+  return toMeta(row);
 }
 
 /**

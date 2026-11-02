@@ -24,6 +24,7 @@ import {
   wikilinkTitle,
 } from "@/lib/note-paths";
 import { sameWikilinkTargets, type Backlink } from "@/lib/wikilinks";
+import { sha256Hex } from "@/lib/hash";
 import { parseHeadings } from "@/lib/outline";
 import type { EditorApi } from "@/components/editor/markdown-editor";
 import { Backlinks } from "./backlinks";
@@ -31,10 +32,11 @@ import { MobileToolbar } from "./mobile-toolbar";
 import { Outline } from "./outline";
 import { Sheet } from "./sheet";
 import { Menu } from "./menu";
+import { updateCachedBody } from "./note-cache";
 import { markEdited, whenCreated } from "./optimistic-note";
 import { actionError, useVault } from "./vault-context";
 
-type SaveStatus = "saved" | "pending" | "saving" | "error";
+type SaveStatus = "saved" | "pending" | "saving" | "error" | "conflict";
 
 const SAVE_DELAY_MS = 700;
 const RETRY_DELAY_MS = 4000;
@@ -47,9 +49,14 @@ export function NoteView({
   /** Nota acabou de ser criada: foca o título para já renomear. */
   isNew?: boolean;
 }) {
-  const { openMove, openDelete, touchNote } = useVault();
+  const { openMove, openDelete, touchNote, showError } = useVault();
   const titleRef = useRef<HTMLInputElement>(null);
-  const { body, setBody, status, flush } = useAutosave(note.id, note.body, touchNote);
+  const { body, setBody, status, flush, generation, loadServerVersion, keepMine } = useAutosave(
+    note.id,
+    note.body,
+    touchNote,
+    showError,
+  );
   const editorApi = useRef<EditorApi | null>(null);
   const [cursorLine, setCursorLine] = useState<number | null>(null);
   const headings = useMemo(() => parseHeadings(body), [body]);
@@ -150,9 +157,13 @@ export function NoteView({
               title={note.title}
               autoSelect={isNew}
             />
+            {status === "conflict" && (
+              <ConflictBanner onLoad={loadServerVersion} onKeep={keepMine} />
+            )}
             <BodyEditor
+              key={generation.n}
               note={note}
-              initialValue={note.body}
+              initialValue={generation.body}
               onChange={setBody}
               onCursorLine={setCursorLine}
               onReady={(api) => (editorApi.current = api)}
@@ -226,7 +237,46 @@ export function NoteView({
   );
 }
 
+function ConflictBanner({ onLoad, onKeep }: { onLoad: () => void; onKeep: () => void }) {
+  return (
+    <div
+      role="alert"
+      className="mb-5 rounded-lg border border-danger/40 bg-card px-4 py-3 text-sm text-text"
+    >
+      <p className="font-medium text-text-strong">Esta nota mudou em outro aparelho.</p>
+      <p className="mt-1 text-muted">
+        O salvamento automático está pausado. Carregue a versão atual (descarta o que você
+        digitou aqui) ou mantenha a sua (substitui a do outro aparelho).
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onLoad}
+          className="h-11 rounded-md bg-accent px-3 font-medium text-accent-ink md:h-8"
+        >
+          Carregar a versão atual
+        </button>
+        <button
+          type="button"
+          onClick={onKeep}
+          className="h-11 rounded-md border border-border px-3 text-text hover:bg-active md:h-8"
+        >
+          Manter a minha
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function SaveIndicator({ status }: { status: SaveStatus }) {
+  if (status === "conflict") {
+    return (
+      <span role="status" className="flex items-center gap-1.5 text-danger">
+        <CloudAlertIcon size={14} />
+        Conflito: não salvo
+      </span>
+    );
+  }
   if (status === "error") {
     return (
       <span role="status" className="flex items-center gap-1.5 text-danger">
@@ -365,19 +415,33 @@ function countWords(text: string): number {
   return m ? m.length : 0;
 }
 
-/** Salva o corpo com debounce, tenta de novo em caso de erro e não perde nada ao sair. */
+/**
+ * Salva o corpo com debounce, tenta de novo em caso de erro e não perde nada
+ * ao sair. Cada save diz de qual versão partiu (hash); se a nota mudou em
+ * outro aparelho, o save é recusado e o editor pergunta o que fazer.
+ */
 function useAutosave(
   noteId: string,
   initial: string,
   onSaved: (id: string, body: string) => void,
+  notify: (message: string) => void,
 ) {
   const [body, setBodyState] = useState(initial);
   const [status, setStatus] = useState<SaveStatus>("saved");
+  // Muda quando o texto é trocado por fora (versão do servidor): remonta o editor.
+  const [generation, setGeneration] = useState({ n: 0, body: initial });
   const latest = useRef(initial);
-  const saved = useRef(initial);
+  const saved = useRef(initial); // o que acreditamos estar no banco
   const saving = useRef(false);
+  const conflict = useRef(false);
+  const force = useRef(false); // próximo save sobrescreve ("Manter a minha")
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const flushRef = useRef<() => void>(() => {});
+  const notifyRef = useRef(notify);
+
+  useEffect(() => {
+    notifyRef.current = notify;
+  }, [notify]);
 
   const schedule = useCallback((delay: number) => {
     clearTimeout(timer.current);
@@ -386,7 +450,7 @@ function useAutosave(
 
   const flush = useCallback(async () => {
     clearTimeout(timer.current);
-    if (saving.current) return; // o save em andamento reagenda se precisar
+    if (saving.current || conflict.current) return; // o save em andamento reagenda se precisar
     const value = latest.current;
     if (value === saved.current) {
       setStatus("saved");
@@ -394,20 +458,26 @@ function useAutosave(
     }
     saving.current = true;
     setStatus("saving");
-    let ok = false;
+    let result: "ok" | "error" | "conflict" = "error";
     try {
       await whenCreated(noteId); // nota otimista: espera existir no banco
       const linksChanged = !sameWikilinkTargets(saved.current, value);
-      ok = !actionError(await saveNoteBodyAction(noteId, value, linksChanged));
+      const baseHash = force.current ? undefined : ((await sha256Hex(saved.current)) ?? undefined);
+      const res = await saveNoteBodyAction(noteId, value, { linksChanged, baseHash, onConflict: "report" });
+      result = res.ok ? "ok" : "conflict" in res ? "conflict" : "error";
     } catch {
-      ok = false;
+      result = "error";
     }
     saving.current = false;
-    if (ok) {
+    if (result === "ok") {
+      force.current = false;
       saved.current = value;
       onSaved(noteId, value);
     }
-    if (!ok) {
+    if (result === "conflict") {
+      conflict.current = true;
+      setStatus("conflict");
+    } else if (result === "error") {
       setStatus("error");
       schedule(RETRY_DELAY_MS);
     } else if (latest.current !== saved.current) {
@@ -426,11 +496,70 @@ function useAutosave(
       setBodyState(value);
       latest.current = value;
       markEdited(noteId);
+      if (conflict.current) return; // espera a escolha no aviso
       setStatus((s) => (s === "error" ? s : "pending"));
       schedule(SAVE_DELAY_MS);
     },
     [schedule, noteId],
   );
+
+  /** Troca o texto do editor pelo do servidor. */
+  const replaceWith = useCallback(
+    (serverBody: string) => {
+      clearTimeout(timer.current);
+      conflict.current = false;
+      force.current = false;
+      latest.current = serverBody;
+      saved.current = serverBody;
+      setBodyState(serverBody);
+      setGeneration((g) => ({ n: g.n + 1, body: serverBody }));
+      setStatus("saved");
+      updateCachedBody(noteId, serverBody);
+    },
+    [noteId],
+  );
+
+  const fetchServerBody = useCallback(async (): Promise<string | null> => {
+    try {
+      const res = await fetch(`/api/notes/${noteId}`, { headers: { accept: "application/json" } });
+      if (!res.ok) return null;
+      return ((await res.json()) as { note: { body: string } }).note.body;
+    } catch {
+      return null;
+    }
+  }, [noteId]);
+
+  /** Conflito → "Carregar a versão atual" (descarta o texto local). */
+  const loadServerVersion = useCallback(async () => {
+    const serverBody = await fetchServerBody();
+    if (serverBody === null) notifyRef.current("Não foi possível carregar a versão atual.");
+    else replaceWith(serverBody);
+  }, [fetchServerBody, replaceWith]);
+
+  /** Conflito → "Manter a minha" (sobrescreve a do outro aparelho). */
+  const keepMine = useCallback(() => {
+    conflict.current = false;
+    force.current = true;
+    void flush();
+  }, [flush]);
+
+  // Voltou para esta aba/app sem nada pendente: pega a versão mais nova do
+  // servidor antes que você comece a digitar sobre um texto velho.
+  useEffect(() => {
+    const onVisible = async () => {
+      if (document.visibilityState !== "visible") return;
+      if (saving.current || conflict.current || latest.current !== saved.current) return;
+      const before = saved.current;
+      const serverBody = await fetchServerBody();
+      if (serverBody === null || serverBody === before) return;
+      // Ninguém digitou enquanto buscava?
+      if (!saving.current && !conflict.current && latest.current === before && saved.current === before) {
+        replaceWith(serverBody);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [fetchServerBody, replaceWith]);
 
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -440,16 +569,29 @@ function useAutosave(
     return () => {
       window.removeEventListener("beforeunload", onBeforeUnload);
       clearTimeout(timer.current);
-      // Saiu da nota com alteração pendente: salva sem esperar.
+      // Saiu da nota com alteração pendente: salva sem esperar. Se houver
+      // conflito, o texto vai para uma nota "(conflito)" em vez de se perder.
       if (latest.current !== saved.current) {
         const value = latest.current;
-        const linksChanged = !sameWikilinkTargets(saved.current, value);
+        const base = saved.current;
+        const forced = force.current;
+        const linksChanged = !sameWikilinkTargets(base, value);
         void whenCreated(noteId)
-          .then(() => saveNoteBodyAction(noteId, value, linksChanged))
+          .then(async () => {
+            const baseHash = forced ? undefined : ((await sha256Hex(base)) ?? undefined);
+            return saveNoteBodyAction(noteId, value, { linksChanged, baseHash, onConflict: "copy" });
+          })
+          .then((res) => {
+            if (res.ok && "copiedTo" in res) {
+              notifyRef.current(
+                `A nota mudou em outro aparelho. Seu texto foi guardado em “${res.copiedTo}”.`,
+              );
+            }
+          })
           .catch(() => {});
       }
     };
   }, [noteId]);
 
-  return { body, setBody, status, flush };
+  return { body, setBody, status, flush, generation, loadServerVersion, keepMine };
 }
