@@ -11,6 +11,7 @@ import { continueBujoTask, cycleTaskState, type FormatKind, runFormat } from "./
 import { bujoWidgets } from "./bujo-widgets";
 import { livePreview, taskToggle } from "./live-preview";
 import { editorHighlight, editorTheme } from "./theme";
+import { slashCommandSource } from "./slash-commands";
 import { wikilinkAutocomplete } from "./wikilink-autocomplete";
 
 /** O elemento está numa linha onde há cursor? (lá o clique é para editar) */
@@ -118,7 +119,7 @@ export default function MarkdownEditor({
           editorHighlight,
           livePreview,
           bujoWidgets,
-          wikilinkAutocomplete(() => callbacks.current.linkTargets),
+          wikilinkAutocomplete(() => callbacks.current.linkTargets, [slashCommandSource]),
           taskToggle,
           openLinks,
           EditorView.updateListener.of((u) => {

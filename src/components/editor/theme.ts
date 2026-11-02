@@ -187,6 +187,7 @@ export const editorTheme = EditorView.theme(
     "@media (max-width: 767px)": {
       ".cm-bujo-chip, .cm-bujo-input": { minHeight: "44px", height: "44px" },
       ".cm-bujo-label": { flexBasis: "100%", paddingTop: "0" },
+      ".cm-tooltip-autocomplete > ul > li": { minHeight: "44px", alignItems: "center" },
     },
 
     // Autocomplete de [[links]]
@@ -216,6 +217,16 @@ export const editorTheme = EditorView.theme(
     ".cm-tooltip-autocomplete > ul > li[aria-selected]": {
       backgroundColor: "#2a2d35",
       color: c.strong,
+    },
+    ".cm-tooltip-autocomplete completion-section": {
+      display: "block",
+      padding: "8px 10px 4px",
+      fontSize: "11px",
+      fontWeight: "600",
+      letterSpacing: "0.04em",
+      textTransform: "uppercase",
+      color: c.muted,
+      border: "none",
     },
     ".cm-completionMatchedText": { textDecoration: "none", color: c.accent, fontWeight: "600" },
     ".cm-completionDetail": {

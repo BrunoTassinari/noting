@@ -3,6 +3,7 @@ import {
   type Completion,
   type CompletionContext,
   type CompletionResult,
+  type CompletionSource,
 } from "@codemirror/autocomplete";
 import { syntaxTree } from "@codemirror/language";
 import type { EditorView } from "@codemirror/view";
@@ -22,7 +23,11 @@ function inCode(ctx: CompletionContext): boolean {
  * aproximada pelo nome). Enter/Tab insere "Nome]]". Se o nome existir em
  * mais de uma pasta, insere "Pasta/Nome" para não ficar ambíguo.
  */
-export function wikilinkAutocomplete(getNotes: () => { notes: NoteMeta[]; selfId?: string }) {
+export function wikilinkAutocomplete(
+  getNotes: () => { notes: NoteMeta[]; selfId?: string },
+  /** Outras fontes no mesmo menu (ex.: comandos do "/"). */
+  extra: CompletionSource[] = [],
+) {
   const source = (ctx: CompletionContext): CompletionResult | null => {
     const before = ctx.matchBefore(/\[\[[^\[\]|#\n]*$/);
     if (!before || inCode(ctx)) return null;
@@ -56,7 +61,7 @@ export function wikilinkAutocomplete(getNotes: () => { notes: NoteMeta[]; selfId
   };
 
   return autocompletion({
-    override: [source],
+    override: [source, ...extra],
     icons: false,
     activateOnTyping: true,
     closeOnBlur: true,
