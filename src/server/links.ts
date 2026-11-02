@@ -43,7 +43,7 @@ function snippetFor(body: string, title: string): string {
       (l) => folderName(l.target.split("#")[0].trim()).toLowerCase() === wanted,
     );
     if (!hit) continue;
-    let text = line.replace(/^\s*(?:[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+|#{1,6}\s+|>\s*)/, "").trim();
+    let text = line.replace(/^\s*(?:[-*+]\s+(?:\[[ xX><\-o/]\]\s+)?|\d+[.)]\s+|#{1,6}\s+|>\s*)/, "").trim();
     if (text.length <= SNIPPET_MAX) return text;
     // Corta em volta do link.
     const at = Math.max(0, text.indexOf("[[") - 50);

@@ -5,7 +5,7 @@ export function markdownToPlain(md: string): string {
     .replace(/^ {0,3}(`{3,}|~{3,}).*$/gm, "") // cercas de bloco de código
     .replace(/^ {0,3}#{1,6}[ \t]+/gm, "") // títulos
     .replace(/^\s*>\s?/gm, "") // citações
-    .replace(/^\s*(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?/gm, "") // listas e tarefas
+    .replace(/^\s*(?:[-*+]|\d+[.)])\s+(?:\[[ xX><\-o/]\]\s+)?/gm, "") // listas e tarefas
     .replace(/^ {0,3}([-*_])(?:\s*\1){2,}\s*$/gm, "") // linhas horizontais
     .replace(/!?\[\[([^\]|]+)\|([^\]]+)\]\]/g, "$2") // [[Nota|apelido]]
     .replace(/!?\[\[([^\]]+)\]\]/g, "$1") // [[Nota]]

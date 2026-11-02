@@ -121,7 +121,13 @@ export const editorTheme = EditorView.theme(
       boxSizing: "border-box",
     },
     ".cm-task-box-done": { backgroundColor: c.accent, borderColor: c.accent, color: "#16171b" },
+    ".cm-task-box-moved": { color: c.muted, borderColor: c.muted },
+    ".cm-task-box-cancelled": { color: c.muted, borderColor: c.muted },
+    ".cm-task-box-event": { borderRadius: "50%", borderColor: c.accent, cursor: "text" },
+    ".cm-task-box-doing": { color: c.accent, borderColor: c.accent },
+    ".cm-task-box-moved, .cm-task-box-cancelled, .cm-task-box-doing": { cursor: "text" },
     ".cm-task-done": { color: c.muted, textDecoration: "line-through" },
+    ".cm-task-moved": { color: c.muted },
 
     // Autocomplete de [[links]]
     ".cm-tooltip.cm-tooltip-autocomplete": {

@@ -8,6 +8,7 @@ import {
   type ViewUpdate,
   WidgetType,
 } from "@codemirror/view";
+import { normalizeState, TASK_LABELS, type TaskState } from "@/lib/tasks";
 
 // Renderização ao vivo, no estilo do Obsidian: fora da linha em edição a
 // sintaxe Markdown some e o texto aparece formatado; na linha do cursor a
@@ -27,23 +28,42 @@ class BulletWidget extends WidgetType {
   }
 }
 
+const ICONS: Partial<Record<TaskState, string>> = {
+  x: '<path d="m5 12 5 5 9-10"/>',
+  ">": '<path d="m9 6 6 6-6 6"/>',
+  "<": '<path d="m15 6-6 6 6 6"/>',
+  "-": '<path d="M6 12h12"/>',
+  "/": '<path d="M7 17 17 7"/>',
+};
+
+/** Caixinha da tarefa, com um visual por estado. */
 class CheckboxWidget extends WidgetType {
-  constructor(readonly checked: boolean, readonly pos: number) {
+  constructor(readonly state: TaskState, readonly pos: number) {
     super();
   }
   eq(other: CheckboxWidget) {
-    return other.checked === this.checked && other.pos === this.pos;
+    return other.state === this.state && other.pos === this.pos;
   }
   toDOM() {
     const box = document.createElement("span");
-    box.className = `cm-task-box${this.checked ? " cm-task-box-done" : ""}`;
-    box.setAttribute("role", "checkbox");
-    box.setAttribute("aria-checked", String(this.checked));
-    box.setAttribute("aria-label", this.checked ? "Marcar como pendente" : "Marcar como feita");
+    const key = { " ": "open", x: "done", ">": "moved", "<": "moved", "-": "cancelled", o: "event", "/": "doing" }[
+      this.state
+    ];
+    box.className = `cm-task-box cm-task-box-${key}`;
     box.dataset.taskPos = String(this.pos);
-    if (this.checked) {
-      box.innerHTML =
-        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>';
+    if (this.state === " " || this.state === "x") {
+      const checked = this.state === "x";
+      box.setAttribute("role", "checkbox");
+      box.setAttribute("aria-checked", String(checked));
+      box.setAttribute("aria-label", checked ? "Marcar como pendente" : "Marcar como feita");
+    } else {
+      box.setAttribute("role", "img");
+      box.setAttribute("aria-label", TASK_LABELS[this.state]);
+      box.title = TASK_LABELS[this.state];
+    }
+    const icon = ICONS[this.state];
+    if (icon) {
+      box.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icon}</svg>`;
     }
     return box;
   }
@@ -51,6 +71,17 @@ class CheckboxWidget extends WidgetType {
     return false;
   }
 }
+
+/** Classe da linha conforme o estado (riscado, apagado). */
+const TASK_LINE_CLASS: Partial<Record<TaskState, string>> = {
+  x: "cm-task-done",
+  "-": "cm-task-done",
+  ">": "cm-task-moved",
+  "<": "cm-task-moved",
+};
+
+/** Estados fora do Markdown padrão ([>], [-], [o]...): o parser não os reconhece. */
+const EXTRA_TASK_RE = /^\[([><\-o/])\](?=\s|$)/;
 
 class RuleWidget extends WidgetType {
   eq() {
@@ -167,9 +198,30 @@ function build(view: EditorView, focused: boolean): DecorationSet {
             const isBullet = node.node.parent?.parent?.name === "BulletList";
             const item = node.node.parent;
             const hasTask = item?.getChild("Task");
-            if (hasTask && !isActive(node.from)) {
+            const line = state.doc.lineAt(node.from);
+            // "- [>] texto": tarefa com estado do Bullet Journal.
+            const extraFrom = node.to + 1;
+            const extra =
+              isBullet && !hasTask && state.doc.sliceString(node.to, extraFrom) === " "
+                ? EXTRA_TASK_RE.exec(state.doc.sliceString(extraFrom, line.to))
+                : null;
+            if (extra) {
+              const st = normalizeState(extra[1]);
+              const cls = TASK_LINE_CLASS[st];
+              if (cls) lineClass(node.from, cls);
+            }
+            if ((hasTask || extra) && !isActive(node.from)) {
               // "- [ ] tarefa": some o "- ", fica só a caixinha.
-              decos.push(hide.range(node.from, Math.min(node.to + 1, state.doc.lineAt(node.from).to)));
+              decos.push(hide.range(node.from, Math.min(node.to + 1, line.to)));
+              if (extra) {
+                const st = normalizeState(extra[1]);
+                decos.push(
+                  Decoration.replace({ widget: new CheckboxWidget(st, extraFrom) }).range(
+                    extraFrom,
+                    extraFrom + 3,
+                  ),
+                );
+              }
             } else if (isBullet && !isActive(node.from)) {
               decos.push(Decoration.replace({ widget: new BulletWidget() }).range(node.from, node.to));
             } else {
@@ -179,11 +231,12 @@ function build(view: EditorView, focused: boolean): DecorationSet {
           }
           case "TaskMarker": {
             const text = state.doc.sliceString(node.from, node.to);
-            const checked = /\[[xX]\]/.test(text);
-            if (checked) lineClass(node.from, "cm-task-done");
+            const st: TaskState = /\[[xX]\]/.test(text) ? "x" : " ";
+            const cls = TASK_LINE_CLASS[st];
+            if (cls) lineClass(node.from, cls);
             if (!isActive(node.from)) {
               decos.push(
-                Decoration.replace({ widget: new CheckboxWidget(checked, node.from) }).range(
+                Decoration.replace({ widget: new CheckboxWidget(st, node.from) }).range(
                   node.from,
                   node.to,
                 ),
@@ -278,14 +331,20 @@ export const livePreview = ViewPlugin.fromClass(
   { decorations: (v) => v.decorations },
 );
 
-/** Clique na caixinha de tarefa alterna [ ] ↔ [x]. */
+/**
+ * Clique na caixinha: alterna [ ] ↔ [x]. Os outros estados ([>], [-], [o]...)
+ * não mudam com clique (use Ctrl/Cmd+L para percorrer os estados).
+ */
 export const taskToggle = EditorView.domEventHandlers({
   mousedown(event, view) {
     const target = (event.target as HTMLElement).closest<HTMLElement>("[data-task-pos]");
     if (!target) return false;
     const pos = Number(target.dataset.taskPos);
     const current = view.state.doc.sliceString(pos, pos + 3);
-    const next = /\[[xX]\]/.test(current) ? "[ ]" : "[x]";
+    let next: string;
+    if (current === "[ ]") next = "[x]";
+    else if (/\[[xX]\]/.test(current)) next = "[ ]";
+    else return false;
     view.dispatch({ changes: { from: pos, to: pos + 3, insert: next } });
     event.preventDefault();
     return true;

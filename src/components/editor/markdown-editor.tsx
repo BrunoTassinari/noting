@@ -3,11 +3,11 @@
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
-import { EditorState } from "@codemirror/state";
+import { EditorState, Prec } from "@codemirror/state";
 import { EditorView, keymap, placeholder } from "@codemirror/view";
 import { useEffect, useRef } from "react";
 import type { NoteMeta } from "@/lib/note-paths";
-import { type FormatKind, runFormat } from "./commands";
+import { continueBujoTask, cycleTaskState, type FormatKind, runFormat } from "./commands";
 import { livePreview, taskToggle } from "./live-preview";
 import { editorHighlight, editorTheme } from "./theme";
 import { wikilinkAutocomplete } from "./wikilink-autocomplete";
@@ -89,6 +89,13 @@ export default function MarkdownEditor({
         doc: initialValue,
         extensions: [
           history(),
+          // Antes do keymap do Markdown: tarefas com estados do Bullet Journal.
+          Prec.high(
+            keymap.of([
+              { key: "Mod-l", run: cycleTaskState },
+              { key: "Enter", run: continueBujoTask },
+            ]),
+          ),
           keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
           // Enter continua listas e tarefas; Backspace remove a marcação.
           markdown({ base: markdownLanguage, codeLanguages: languages, addKeymap: true }),
