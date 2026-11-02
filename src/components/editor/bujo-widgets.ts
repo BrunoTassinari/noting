@@ -1,20 +1,32 @@
-import { type EditorState, type Range, StateEffect, StateField } from "@codemirror/state";
+import { type EditorState, Facet, type Range, StateEffect, StateField } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView, WidgetType } from "@codemirror/view";
-import { DEFAULT_HABITS } from "@/lib/bujo";
+import { dayFromDaily, DEFAULT_HABITS } from "@/lib/bujo";
 import { asList, asNumber, asScale, CLIMA, HUMOR, parseHabitsBlock, STRESS } from "@/lib/bujo-data";
 import { type FmValue, findFrontmatter, readFrontmatter, setFrontmatterKey } from "@/lib/frontmatter";
-import { el } from "./bujo-dom";
+import { el, icon } from "./bujo-dom";
 import { HabitsWidget, HumorWidget } from "./bujo-month-widgets";
+import { openMediaDialog, openMemorableDialog } from "./bujo-register";
 
 // Blocos que viram interface quando o cursor não está neles:
 //   - frontmatter (--- ... ---) → painel de propriedades;
 //   - ```bujo-dia``` → formulário do dia (grava no frontmatter);
+//     e, em nota diária, a linha "Registrar" (grava na nota do mês);
 //   - ```bujo-habits``` → tabela de hábitos do mês (bujo-month-widgets.ts);
 //   - ```bujo-humor``` → gráfico de humor e resumos do mês.
 // Com o cursor dentro (ou clicando no painel), o texto cru volta para edição.
 // Decorações de bloco precisam vir de um StateField (não de um ViewPlugin).
 
 const setFocus = StateEffect.define<boolean>();
+
+export type NoteInfo = { path: string; title: string };
+
+/**
+ * Pasta e título da nota aberta (função: o nome pode mudar com o editor
+ * aberto). Configurado em markdown-editor.tsx.
+ */
+export const bujoNote = Facet.define<() => NoteInfo | null, () => NoteInfo | null>({
+  combine: (values) => values[0] ?? (() => null),
+});
 
 type Block = {
   kind: "dia" | "habits" | "humor";
@@ -159,11 +171,46 @@ class DayFormWidget extends WidgetType {
       );
     }
     root.append(row("Hábitos", habits));
+
+    // Só em nota diária ("Bullet Journal/Daily/2026.11.03"): grava na nota do mês.
+    const note = view.state.facet(bujoNote)();
+    if (note && dayFromDaily(note)) root.append(row("Registrar", registerButtons(view)));
     return root;
   }
   ignoreEvent() {
     return true; // cliques e digitação ficam no formulário
   }
+}
+
+/** Botões "Dia memorável" e "Série / filme / livro" da linha Registrar. */
+function registerButtons(view: EditorView): HTMLElement {
+  const box = el("div", "cm-bujo-chips");
+  const status = el("span", "cm-bujo-saved");
+  status.setAttribute("role", "status");
+  const done = (message: string) => {
+    status.textContent = message;
+    setTimeout(() => {
+      if (status.textContent === message) status.textContent = "";
+    }, 5000);
+  };
+  const button = (label: string, iconName: "star" | "play", open: typeof openMemorableDialog) => {
+    const b = el("button", "cm-bujo-chip cm-bujo-chip-icon");
+    b.type = "button";
+    b.append(icon(iconName, 15), el("span", "", label));
+    b.addEventListener("click", () => {
+      // A data vem do título no momento do clique (a nota pode ter sido renomeada).
+      const note = view.state.facet(bujoNote)();
+      const d = note ? dayFromDaily(note) : null;
+      if (d) open(d, done);
+    });
+    return b;
+  };
+  box.append(
+    button("Dia memorável", "star", openMemorableDialog),
+    button("Série / filme / livro", "play", openMediaDialog),
+    status,
+  );
+  return box;
 }
 
 /** Painel de propriedades (frontmatter). Clique para editar o YAML. */

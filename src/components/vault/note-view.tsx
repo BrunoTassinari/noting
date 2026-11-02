@@ -427,6 +427,7 @@ function BodyEditor({
         onOpenWikilink={openWikilink}
         linkTargets={{ notes, selfId: note.id }}
         onCursorLine={onCursorLine}
+        note={{ path: note.path, title: note.title }}
         onReady={(api) => {
           setReady(true);
           onReady(api);
