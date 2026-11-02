@@ -52,12 +52,16 @@ export async function createNoteAction(input: {
   redirect(`/n/${id}`);
 }
 
-export async function saveNoteBodyAction(id: string, body: string): Promise<ActionResult> {
+export async function saveNoteBodyAction(
+  id: string,
+  body: string,
+  linksChanged = true,
+): Promise<ActionResult> {
   if (typeof body !== "string" || body.length > MAX_BODY_LENGTH) {
     return { ok: false, error: "Nota grande demais para salvar." };
   }
   // Sem refresh: a árvore não depende do conteúdo.
-  return run((userId) => updateNoteBody(userId, id, body), { refresh: false });
+  return run((userId) => updateNoteBody(userId, id, body, linksChanged), { refresh: false });
 }
 
 export async function renameNoteAction(id: string, title: string): Promise<ActionResult> {

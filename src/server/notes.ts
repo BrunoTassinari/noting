@@ -2,6 +2,7 @@ import "server-only";
 import { and, asc, eq, like, or } from "drizzle-orm";
 import { db } from "@/db";
 import { notes } from "@/db/schema";
+import { linkersOf, mentionersOf, rebuildLinks } from "./links";
 import {
   DEFAULT_TITLE,
   isUuid,
@@ -108,6 +109,8 @@ export async function createNote(
         .insert(notes)
         .values({ id: input.id, userId, path, title })
         .returning(metaColumns);
+      // [[links]] que já apontavam para este nome passam a valer.
+      await rebuildLinks(db, userId, await mentionersOf(db, userId, row.title));
       return toMeta(row);
     } catch (err) {
       if (uniqueConstraint(err) !== "notes_unique_title_per_folder") throw err;
@@ -138,23 +141,49 @@ async function updateOwned(
   }
 }
 
-export function updateNoteBody(userId: string, id: string, body: string) {
-  return updateOwned(userId, id, { body });
+/**
+ * Salva o corpo. `relink` = os [[links]] mudaram desde o último save (o
+ * cliente compara); só então a tabela links é reconstruída.
+ */
+export async function updateNoteBody(userId: string, id: string, body: string, relink = true) {
+  const meta = await updateOwned(userId, id, { body });
+  if (relink) await rebuildLinks(db, userId, [id]);
+  return meta;
+}
+
+/**
+ * Renomear ou mover muda a quem os [[links]] apontam: reconstrói os links
+ * de quem apontava para a nota, de quem menciona o novo nome e dela mesma.
+ */
+async function updateAndRelink(
+  userId: string,
+  id: string,
+  values: Partial<{ path: string; title: string }>,
+) {
+  if (!isUuid(id)) throw new NoteError("Nota não encontrada.");
+  const before = await linkersOf(db, userId, id);
+  const meta = await updateOwned(userId, id, values);
+  const mentioners = await mentionersOf(db, userId, meta.title);
+  await rebuildLinks(db, userId, [...before, ...mentioners, id]);
+  return meta;
 }
 
 export function renameNote(userId: string, id: string, title: string) {
-  return updateOwned(userId, id, { title: unwrap(validateTitle(title)) });
+  return updateAndRelink(userId, id, { title: unwrap(validateTitle(title)) });
 }
 
 export function moveNote(userId: string, id: string, path: string) {
-  return updateOwned(userId, id, { path: unwrap(validateFolder(path)) });
+  return updateAndRelink(userId, id, { path: unwrap(validateFolder(path)) });
 }
 
 export async function deleteNote(userId: string, id: string): Promise<void> {
   if (!isUuid(id)) throw new NoteError("Nota não encontrada.");
+  const before = await linkersOf(db, userId, id);
   const deleted = await db
     .delete(notes)
     .where(and(eq(notes.userId, userId), eq(notes.id, id)))
     .returning({ id: notes.id });
   if (deleted.length === 0) throw new NoteError("Nota não encontrada.");
+  // Quem apontava para ela pode passar a apontar para outra de mesmo nome.
+  await rebuildLinks(db, userId, before);
 }

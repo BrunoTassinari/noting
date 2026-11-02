@@ -24,6 +24,8 @@ import {
   resolveWikilink,
   wikilinkTitle,
 } from "@/lib/note-paths";
+import { sameWikilinkTargets, type Backlink } from "@/lib/wikilinks";
+import { Backlinks } from "./backlinks";
 import { Menu } from "./menu";
 import { whenCreated } from "./optimistic-note";
 import { actionError, useVault } from "./vault-context";
@@ -37,7 +39,7 @@ export function NoteView({
   note,
   isNew = false,
 }: {
-  note: NoteMeta & { body: string };
+  note: NoteMeta & { body: string; backlinks?: Backlink[] };
   /** Nota acabou de ser criada: foca o título para já renomear. */
   isNew?: boolean;
 }) {
@@ -146,10 +148,7 @@ export function NoteView({
             </span>
           </div>
           <div className="px-3.5 pb-4 pt-2">
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.04em] text-muted">Backlinks</h2>
-            <p className="text-xs leading-normal text-muted">
-              As notas que apontam para esta com [[links]] vão aparecer aqui.
-            </p>
+            <Backlinks items={note.backlinks ?? []} />
             <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-[0.04em] text-muted">Tópicos</h2>
             <p className="text-xs leading-normal text-muted">Os títulos da nota vão aparecer aqui.</p>
           </div>
@@ -288,6 +287,7 @@ function BodyEditor({
         initialValue={initialValue}
         onChange={onChange}
         onOpenWikilink={openWikilink}
+        linkTargets={{ notes, selfId: note.id }}
         onReady={() => setReady(true)}
       />
     </>
@@ -327,7 +327,8 @@ function useAutosave(noteId: string, initial: string) {
     let ok = false;
     try {
       await whenCreated(noteId); // nota otimista: espera existir no banco
-      ok = !actionError(await saveNoteBodyAction(noteId, value));
+      const linksChanged = !sameWikilinkTargets(saved.current, value);
+      ok = !actionError(await saveNoteBodyAction(noteId, value, linksChanged));
     } catch {
       ok = false;
     }
@@ -368,8 +369,9 @@ function useAutosave(noteId: string, initial: string) {
       // Saiu da nota com alteração pendente: salva sem esperar.
       if (latest.current !== saved.current) {
         const value = latest.current;
+        const linksChanged = !sameWikilinkTargets(saved.current, value);
         void whenCreated(noteId)
-          .then(() => saveNoteBodyAction(noteId, value))
+          .then(() => saveNoteBodyAction(noteId, value, linksChanged))
           .catch(() => {});
       }
     };

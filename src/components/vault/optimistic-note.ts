@@ -2,12 +2,13 @@
 
 import { useSyncExternalStore } from "react";
 import type { NoteMeta } from "@/lib/note-paths";
+import type { Backlink } from "@/lib/wikilinks";
 
 // Nota criada de forma otimista: aparece na hora do clique, enquanto o
 // servidor grava. Quando a página real chega, ela "adota" esta nota (mesmo
 // id), e o editor continua montado, sem perder o que já foi digitado.
 
-export type OptimisticNote = NoteMeta & { body: string; pending: boolean };
+export type OptimisticNote = NoteMeta & { body: string; pending: boolean; backlinks: Backlink[] };
 
 let current: OptimisticNote | null = null;
 const listeners = new Set<() => void>();
@@ -41,12 +42,12 @@ export function startOptimisticNote(note: NoteMeta) {
   });
   promise.catch(() => {}); // quem espera trata; evita "unhandled rejection"
   creations.set(note.id, { promise, resolve, reject });
-  current = { ...note, body: "", pending: true };
+  current = { ...note, body: "", pending: true, backlinks: [] };
   emit();
 }
 
 /** A página real chegou: a nota existe no banco. */
-export function adoptOptimisticNote(note: NoteMeta & { body: string }) {
+export function adoptOptimisticNote(note: NoteMeta & { body: string; backlinks: Backlink[] }) {
   if (current?.id !== note.id) return;
   creations.get(note.id)?.resolve();
   creations.delete(note.id);
@@ -54,7 +55,8 @@ export function adoptOptimisticNote(note: NoteMeta & { body: string }) {
     !current.pending &&
     current.title === note.title &&
     current.path === note.path &&
-    current.updatedAt === note.updatedAt;
+    current.updatedAt === note.updatedAt &&
+    current.backlinks === note.backlinks;
   if (same) return;
   current = { ...note, pending: false };
   emit();

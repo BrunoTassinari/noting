@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { NoteSlot } from "@/components/vault/note-slot";
+import { isUuid } from "@/lib/note-paths";
 import { requireUser } from "@/lib/session";
+import { getBacklinkRows, toBacklinks } from "@/server/links";
 import { getNote } from "@/server/notes";
 
 // cache: metadata e página compartilham a mesma leitura.
@@ -17,7 +19,11 @@ export async function generateMetadata({ params }: PageProps<"/n/[id]">): Promis
 }
 
 export default async function NotePage({ params }: PageProps<"/n/[id]">) {
-  const note = await load((await params).id);
+  const { id } = await params;
+  if (!isUuid(id)) notFound();
+  const user = await requireUser();
+  // Em paralelo: a nota e quem aponta para ela.
+  const [note, rows] = await Promise.all([load(id), getBacklinkRows(user.id, id)]);
   if (!note) notFound();
-  return <NoteSlot note={note} />;
+  return <NoteSlot note={{ ...note, backlinks: toBacklinks(rows, note.title) }} />;
 }

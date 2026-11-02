@@ -123,6 +123,45 @@ export const editorTheme = EditorView.theme(
     ".cm-task-box-done": { backgroundColor: c.accent, borderColor: c.accent, color: "#16171b" },
     ".cm-task-done": { color: c.muted, textDecoration: "line-through" },
 
+    // Autocomplete de [[links]]
+    ".cm-tooltip.cm-tooltip-autocomplete": {
+      backgroundColor: "#23262d",
+      border: `1px solid ${c.border}`,
+      borderRadius: "8px",
+      padding: "4px",
+      boxShadow: "0 12px 32px rgba(0, 0, 0, 0.45)",
+    },
+    ".cm-tooltip.cm-tooltip-autocomplete > ul": {
+      fontFamily: "var(--font-sans) !important",
+      maxHeight: "260px",
+      minWidth: "240px",
+      maxWidth: "min(420px, 90vw)",
+    },
+    ".cm-tooltip-autocomplete > ul > li": {
+      display: "flex",
+      alignItems: "baseline",
+      gap: "8px",
+      padding: "6px 10px !important",
+      borderRadius: "6px",
+      color: c.text,
+      fontSize: "14px",
+      lineHeight: "1.4",
+    },
+    ".cm-tooltip-autocomplete > ul > li[aria-selected]": {
+      backgroundColor: "#2a2d35",
+      color: c.strong,
+    },
+    ".cm-completionMatchedText": { textDecoration: "none", color: c.accent, fontWeight: "600" },
+    ".cm-completionDetail": {
+      marginLeft: "auto",
+      fontStyle: "normal",
+      fontSize: "12px",
+      color: c.muted,
+      whiteSpace: "nowrap",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+    },
+
     ".cm-hr": {
       display: "inline-block",
       width: "100%",

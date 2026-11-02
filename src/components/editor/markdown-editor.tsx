@@ -6,8 +6,10 @@ import { languages } from "@codemirror/language-data";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap, placeholder } from "@codemirror/view";
 import { useEffect, useRef } from "react";
+import type { NoteMeta } from "@/lib/note-paths";
 import { livePreview, taskToggle } from "./live-preview";
 import { editorHighlight, editorTheme } from "./theme";
+import { wikilinkAutocomplete } from "./wikilink-autocomplete";
 
 /** O elemento está numa linha onde há cursor? (lá o clique é para editar) */
 function onSelectedLine(view: EditorView, el: HTMLElement): boolean {
@@ -21,6 +23,8 @@ export type MarkdownEditorProps = {
   onChange: (value: string) => void;
   /** Clique num [[link]] (alvo = texto antes do "|"). */
   onOpenWikilink: (target: string) => void;
+  /** Notas oferecidas no autocomplete de [[ (selfId = a nota aberta). */
+  linkTargets: { notes: NoteMeta[]; selfId?: string };
   /** Chamado quando o editor terminou de montar. */
   onReady?: () => void;
 };
@@ -33,13 +37,14 @@ export default function MarkdownEditor({
   initialValue,
   onChange,
   onOpenWikilink,
+  linkTargets,
   onReady,
 }: MarkdownEditorProps) {
   const host = useRef<HTMLDivElement>(null);
-  const callbacks = useRef({ onChange, onOpenWikilink });
+  const callbacks = useRef({ onChange, onOpenWikilink, linkTargets });
 
   useEffect(() => {
-    callbacks.current = { onChange, onOpenWikilink };
+    callbacks.current = { onChange, onOpenWikilink, linkTargets };
   });
 
   useEffect(() => {
@@ -86,6 +91,7 @@ export default function MarkdownEditor({
           editorTheme,
           editorHighlight,
           livePreview,
+          wikilinkAutocomplete(() => callbacks.current.linkTargets),
           taskToggle,
           openLinks,
           EditorView.updateListener.of((u) => {

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import type { NoteMeta } from "@/lib/note-paths";
+import type { Backlink } from "@/lib/wikilinks";
 import { NoteView } from "./note-view";
 import { adoptOptimisticNote, useOptimisticNote } from "./optimistic-note";
 
@@ -9,7 +10,7 @@ import { adoptOptimisticNote, useOptimisticNote } from "./optimistic-note";
  * Conteúdo de /n/[id]. Se esta nota acabou de ser criada de forma otimista,
  * o editor já está aberto pelo layout: só entrega os dados reais a ele.
  */
-export function NoteSlot({ note }: { note: NoteMeta & { body: string } }) {
+export function NoteSlot({ note }: { note: NoteMeta & { body: string; backlinks: Backlink[] } }) {
   const optimistic = useOptimisticNote();
   const adopted = optimistic?.id === note.id;
 
