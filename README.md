@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Noting
 
-## Getting Started
+App pessoal de notas em Markdown, no estilo do Obsidian, para usar no
+navegador do PC e no celular (PWA). Next.js (App Router) + Supabase.
 
-First, run the development server:
+## Configuração
+
+1. Crie um projeto no [Supabase](https://supabase.com).
+2. Aplique a migration `supabase/migrations/20261102000000_init.sql`:
+   - pelo painel: **SQL Editor** → cole o conteúdo do arquivo → **Run**; ou
+   - pela CLI: `supabase link --project-ref <ref>` e depois `supabase db push`.
+3. Crie seu usuário em **Authentication → Users → Add user**, com e-mail e
+   senha e a opção "Auto Confirm User" marcada. O app não tem tela de
+   cadastro.
+4. Recomendado: em **Authentication → Sign In / Providers → Email**,
+   desligue "Allow new users to sign up" para ninguém mais criar conta.
+5. Copie `.env.example` para `.env.local` e preencha com os valores de
+   **Project Settings → API**:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (a chave pública anon/publishable)
+
+## Rodando
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra http://localhost:3000. Sem sessão, você é levado para `/login`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Modelo de dados
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `notes(id, user_id, path, title, body, created_at, updated_at)`
+  - `path` = pasta (`''` na raiz, ex.: `Projetos/app-notas`)
+  - `title` = nome da nota, único por pasta
+  - `body` = Markdown puro (arquivo exportado: `path/title.md`)
+- `links(from_id, to_id, user_id)`, reconstruída a partir dos `[[links]]`.
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+RLS garante que cada usuário só leia e altere os próprios dados.
