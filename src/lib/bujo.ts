@@ -20,7 +20,7 @@ export const MONTHS = [
   "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
 ];
 export const WEEKDAYS = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
-const WEEKDAYS_SHORT = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+export const WEEKDAYS_SHORT = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
 /** Dia de calendário (meia-noite UTC; só ano/mês/dia importam). */
 export type Day = Date;
