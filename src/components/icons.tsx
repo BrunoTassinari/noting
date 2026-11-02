@@ -293,3 +293,43 @@ export function CheckIcon(props: IconProps) {
     </Base>
   );
 }
+
+/** Listas: itens com caixas de marcar. */
+export function ChecklistIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="m4 6.5 1.5 1.5L8 5.5M4 13.5 5.5 15 8 12.5" />
+      <path d="M11 7h9M11 14h9M5 20h.01M11 20h9" />
+    </Base>
+  );
+}
+
+/** Sinalizadores: bandeira. */
+export function FlagIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M5 21V4" />
+      <path d="M5 4h11l-2 4 2 4H5" />
+    </Base>
+  );
+}
+
+/** Item para comprar: carrinho. */
+export function CartIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h7.6a2 2 0 0 0 2-1.5L20.5 8H6.2" />
+      <circle cx="10" cy="20" r="1.2" />
+      <circle cx="17" cy="20" r="1.2" />
+    </Base>
+  );
+}
+
+/** Nota de avaliação: estrela. */
+export function StarIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.8-5.2 2.8 1-5.8-4.3-4.1 5.9-.9z" />
+    </Base>
+  );
+}

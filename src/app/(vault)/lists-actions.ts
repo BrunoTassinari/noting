@@ -66,31 +66,39 @@ export async function loadListsAction(selected: string | null): Promise<Result<{
   return run(async (userId) => ({ data: await getLists(userId, selectedOf(selected)) }), { refresh: false });
 }
 
-/** A fazer / em andamento / concluído / desisti. */
-export async function setListItemStateAction(
-  ref: LineRef,
-  state: TaskState,
-): Promise<Result<{ data: ListsPayload }>> {
-  return run(async (userId) => {
-    const r = refOf(ref);
-    if (!LIST_STATES.has(state)) throw new NoteError("Estado inválido.");
-    await editNoteLine(userId, r.noteId, r.line, r.raw, (raw) => setItemState(raw, state), { onlyLists: true });
-    return { data: await getLists(userId, r.noteId) };
-  });
-}
+export type ItemPatch = {
+  /** A fazer / em andamento / concluído / desisti. */
+  state?: TaskState;
+  /** Nota ★ e comentário; os dois vazios tiram o bloco "★". Ausentes: não mexe. */
+  evaluation?: { rating: string | null; comment: string | null };
+};
 
-/** Nota ★ e comentário (vazios: tira o bloco "★"). */
-export async function setListItemEvaluationAction(
-  ref: LineRef,
-  rating: string | null,
-  comment: string | null,
-): Promise<Result<{ data: ListsPayload }>> {
+/** Muda estado e/ou avaliação de um item, mantendo o resto da linha. */
+export async function updateListItemAction(ref: LineRef, patch: ItemPatch): Promise<Result<{ data: ListsPayload }>> {
   return run(async (userId) => {
     const r = refOf(ref);
-    const rt = shortText(rating, "Nota");
-    if (rt !== null && !RATING_RE.test(rt)) throw new NoteError("A nota deve ser um número, como 8 ou 9.5.");
-    const c = shortText(comment, "Comentário");
-    await editNoteLine(userId, r.noteId, r.line, r.raw, (raw) => setItemEvaluation(raw, rt, c), { onlyLists: true });
+    const { state, evaluation } = (typeof patch === "object" && patch !== null ? patch : {}) as ItemPatch;
+    if (state !== undefined && !LIST_STATES.has(state)) throw new NoteError("Estado inválido.");
+    let rating: string | null = null;
+    let comment: string | null = null;
+    if (evaluation !== undefined) {
+      rating = shortText(evaluation?.rating, "Nota");
+      if (rating !== null && !RATING_RE.test(rating)) throw new NoteError("A nota deve ser um número, como 8 ou 9.5.");
+      comment = shortText(evaluation?.comment, "Comentário");
+    }
+    await editNoteLine(
+      userId,
+      r.noteId,
+      r.line,
+      r.raw,
+      (raw) => {
+        let line: string | null = raw;
+        if (state !== undefined) line = setItemState(line, state);
+        if (line !== null && evaluation !== undefined) line = setItemEvaluation(line, rating, comment);
+        return line;
+      },
+      { onlyLists: true },
+    );
     return { data: await getLists(userId, r.noteId) };
   });
 }
