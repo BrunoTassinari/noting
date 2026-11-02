@@ -1,12 +1,10 @@
-import { redirect } from "next/navigation";
 import { LogoutIcon } from "@/components/icons";
-import { getCurrentUser } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/session";
 import { signOut } from "./login/actions";
 
 // Tela provisória: o layout de 3 painéis entra na etapa 2.
 export default async function Home() {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  const user = await requireUser();
 
   return (
     <div className="flex flex-1 flex-col">

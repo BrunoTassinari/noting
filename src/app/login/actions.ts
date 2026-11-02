@@ -1,7 +1,9 @@
 "use server";
 
+import { APIError } from "better-auth/api";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/lib/auth";
 
 export type LoginState = { error: string | null; email: string };
 
@@ -16,24 +18,26 @@ export async function signIn(
     return { error: "Informe e-mail e senha.", email };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (error) {
-    const message =
-      error.code === "invalid_credentials"
-        ? "E-mail ou senha incorretos."
-        : error.code === "email_not_confirmed"
-          ? "Confirme seu e-mail antes de entrar."
-          : "Não foi possível entrar. Tente de novo.";
-    return { error: message, email };
+  try {
+    await auth.api.signInEmail({
+      body: { email, password },
+      headers: await headers(),
+    });
+  } catch (error) {
+    if (error instanceof APIError && error.status === "UNAUTHORIZED") {
+      return { error: "E-mail ou senha incorretos.", email };
+    }
+    if (error instanceof APIError && error.status === "TOO_MANY_REQUESTS") {
+      return { error: "Muitas tentativas. Espere um pouco.", email };
+    }
+    console.error("Falha no login", error);
+    return { error: "Não foi possível entrar. Tente de novo.", email };
   }
 
   redirect("/");
 }
 
 export async function signOut() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
+  await auth.api.signOut({ headers: await headers() });
   redirect("/login");
 }

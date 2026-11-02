@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { NoteIcon } from "@/components/icons";
+import { getCurrentUser } from "@/lib/session";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Entrar · Noting" };
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  if (await getCurrentUser()) redirect("/");
+
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm rounded-xl border border-border bg-panel p-6 sm:p-8">
