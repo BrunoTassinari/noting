@@ -168,7 +168,7 @@ export function NoteView({
       <div className="flex min-h-0 flex-1">
         {/* Editor */}
         <div className="min-w-0 flex-1 overflow-y-auto bg-surface px-5 pb-16 pt-5 md:px-10 md:pt-10">
-          <div className="mx-auto max-w-[700px]">
+          <div className="w-full">
             <TitleInput
               key={note.title}
               ref={titleRef}
@@ -419,7 +419,7 @@ function BodyEditor({
   return (
     <>
       {!ready && (
-        <div className="min-h-[50vh] whitespace-pre-wrap break-words text-base leading-[1.7] text-[#d3d6dd]">
+        <div className="min-h-[50vh] whitespace-pre-wrap break-words text-base leading-[1.7] text-body">
           {initialValue}
         </div>
       )}

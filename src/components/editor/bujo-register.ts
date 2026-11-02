@@ -225,7 +225,7 @@ export function openMediaDialog(d: Day, onDone: (message: string) => void) {
       const oid = uid("ongoing");
       const ow = el("label", "mt-3 flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-text md:min-h-9");
       ow.htmlFor = oid;
-      ongoing = el("input", "h-4 w-4 accent-[#7fd1c4]");
+      ongoing = el("input", "h-4 w-4 accent-[var(--color-accent)]");
       ongoing.type = "checkbox";
       ongoing.id = oid;
       ow.append(ongoing, el("span", "", "Em andamento"));

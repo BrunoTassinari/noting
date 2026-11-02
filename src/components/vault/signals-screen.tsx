@@ -129,7 +129,7 @@ export function SignalsScreen() {
         <div
           role="tablist"
           aria-label="Filtrar por sinalizador"
-          className="mx-auto flex max-w-[868px] gap-1.5 overflow-x-auto px-4 py-2 [scrollbar-width:none] md:flex-wrap md:px-6"
+          className="flex gap-1.5 overflow-x-auto px-4 py-2 [scrollbar-width:none] md:flex-wrap md:px-6"
         >
           <button type="button" role="tab" aria-selected={filter === "all"} onClick={() => setFilter("all")} className={chip(filter === "all")}>
             Todos
@@ -153,7 +153,7 @@ export function SignalsScreen() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-16 pt-2 md:px-6">
-        <div className="mx-auto max-w-[820px]">
+        <div className="w-full">
           {sources === null ? (
             <p className="py-10 text-center text-sm text-muted">Carregando…</p>
           ) : sections.length === 0 ? (

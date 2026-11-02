@@ -129,7 +129,7 @@ export function BacklogScreen() {
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-16 pt-2 md:px-6">
-        <div className="mx-auto max-w-[820px]">
+        <div className="w-full">
           {backlog === null ? (
             <p className="py-10 text-center text-sm text-muted">Carregando…</p>
           ) : total === 0 ? (

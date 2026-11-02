@@ -348,7 +348,7 @@ export class HabitsWidget extends WidgetType {
 
 // Paleta categórica validada para o fundo escuro (#1b1c21): azul e laranja.
 const COLOR = { humor: "#3987e5", stress: "#d95926", temp: "#c98500" };
-const SURFACE = "#1b1c21";
+const SURFACE = "var(--color-panel)";
 
 type Series = { name: string; color: string; values: (number | null)[] };
 
@@ -377,19 +377,19 @@ function lineChart(opts: {
   const svg = svgEl("svg", { width, height, viewBox: `0 0 ${width} ${height}`, role: "img", "aria-label": opts.label });
 
   for (const t of opts.yTicks) {
-    svg.append(svgEl("line", { x1: m.l, x2: m.l + pw, y1: y(t), y2: y(t), stroke: "#2a2c33", "stroke-width": 1 }));
-    const tx = svgEl("text", { x: m.l - 8, y: y(t) + 4, "text-anchor": "end", fill: "#8d92a0", "font-size": 11 });
+    svg.append(svgEl("line", { x1: m.l, x2: m.l + pw, y1: y(t), y2: y(t), stroke: "var(--color-border)", "stroke-width": 1 }));
+    const tx = svgEl("text", { x: m.l - 8, y: y(t) + 4, "text-anchor": "end", fill: "var(--color-muted)", "font-size": 11 });
     tx.textContent = fmtNum(t);
     svg.append(tx);
   }
   const xTicks = [1, 5, 10, 15, 20, 25, n].filter((d, i, a) => d <= n && a.indexOf(d) === i && (d === n || n - d >= 3));
   for (const d of xTicks) {
-    const tx = svgEl("text", { x: x(d), y: height - 6, "text-anchor": "middle", fill: "#8d92a0", "font-size": 11 });
+    const tx = svgEl("text", { x: x(d), y: height - 6, "text-anchor": "middle", fill: "var(--color-muted)", "font-size": 11 });
     tx.textContent = String(d);
     svg.append(tx);
   }
 
-  const cross = svgEl("line", { y1: m.t, y2: m.t + ph, stroke: "#8d92a0", "stroke-width": 1, visibility: "hidden" });
+  const cross = svgEl("line", { y1: m.t, y2: m.t + ph, stroke: "var(--color-muted)", "stroke-width": 1, visibility: "hidden" });
   svg.append(cross);
 
   for (const s of series) {

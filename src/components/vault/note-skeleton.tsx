@@ -37,7 +37,7 @@ export function NoteSkeleton({ note }: { note: NoteMeta }) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-hidden bg-surface px-5 pt-5 md:px-10 md:pt-10">
-        <div className="mx-auto max-w-[700px]">
+        <div className="w-full">
           <div className="mb-5 text-[28px] font-semibold leading-tight text-text-strong md:text-[32px]">
             {note.title}
           </div>

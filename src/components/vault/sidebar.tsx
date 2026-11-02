@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  ChecklistIcon,
   ChevronDownIcon,
+  FolderIcon,
+  InboxIcon,
   ChevronRightIcon,
   FolderPlusIcon,
   PencilIcon,
@@ -11,8 +14,12 @@ import {
 } from "@/components/icons";
 import { ancestorFolders, buildTree, type FolderNode, type NoteMeta } from "@/lib/note-paths";
 import { NoteLink } from "./note-link";
+import { BacklogQuick, ListsQuick } from "./sidebar-quick";
 import { expandFolders, toggleFolder, useExpandedFolders } from "./expanded-store";
 import { useVault } from "./vault-context";
+
+type SidebarTab = "files" | "backlog" | "lists";
+const TAB_KEY = "noting-sidebar-tab";
 
 const iconButton =
   "flex size-11 items-center justify-center rounded-md text-muted hover:bg-card hover:text-text md:size-7";
@@ -20,6 +27,26 @@ const iconButton =
 export function Sidebar() {
   const { notes, activeNote, currentFolder, creating, createNote, openNewFolder, openSearch } =
     useVault();
+
+  const [tab, setTab] = useState<SidebarTab>("files");
+  // Aba lembrada no navegador (lida depois de montar, para não divergir do servidor).
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(TAB_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (saved === "backlog" || saved === "lists") setTab(saved);
+    } catch {
+      // ok
+    }
+  }, []);
+  const chooseTab = (t: SidebarTab) => {
+    setTab(t);
+    try {
+      localStorage.setItem(TAB_KEY, t);
+    } catch {
+      // ok
+    }
+  };
 
   // Abre as pastas da nota ativa.
   useEffect(() => {
@@ -57,7 +84,7 @@ export function Sidebar() {
         <button
           type="button"
           onClick={openSearch}
-          className="flex h-11 w-full items-center gap-2 rounded-xl border border-border bg-rail px-3.5 text-left text-muted hover:border-[#3a3d47] md:h-8 md:rounded-lg md:px-2.5"
+          className="flex h-11 w-full items-center gap-2 rounded-xl border border-border bg-rail px-3.5 text-left text-muted hover:border-border-strong md:h-8 md:rounded-lg md:px-2.5"
         >
           <SearchIcon size={14} />
           <span className="flex-1 text-base md:text-[13px]">Buscar notas</span>
@@ -65,8 +92,40 @@ export function Sidebar() {
         </button>
       </div>
 
+      <div role="tablist" aria-label="Painel lateral" className="mx-2.5 mb-2 flex shrink-0 gap-1 rounded-lg bg-rail p-0.5">
+        {(
+          [
+            ["files", "Arquivos", <FolderIcon key="f" size={14} />],
+            ["backlog", "Pendências", <InboxIcon key="b" size={14} />],
+            ["lists", "Listas", <ChecklistIcon key="l" size={14} />],
+          ] as const
+        ).map(([key, label, icon]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={tab === key}
+            onClick={() => chooseTab(key)}
+            className={`flex h-11 flex-1 items-center justify-center gap-1.5 rounded-md text-[13px] md:h-7 md:text-xs ${
+              tab === key ? "bg-card text-text-strong" : "text-muted hover:text-text"
+            }`}
+          >
+            {icon}
+            {label}
+          </button>
+        ))}
+      </div>
+
       <nav aria-label="Notas" className="min-h-0 flex-1 overflow-y-auto px-2 pb-24 md:pb-4">
-        {notes.length === 0 ? <EmptyVault /> : <Tree notes={notes} activeId={activeNote?.id} />}
+        {tab === "backlog" ? (
+          <BacklogQuick />
+        ) : tab === "lists" ? (
+          <ListsQuick />
+        ) : notes.length === 0 ? (
+          <EmptyVault />
+        ) : (
+          <Tree notes={notes} activeId={activeNote?.id} />
+        )}
       </nav>
 
     </div>

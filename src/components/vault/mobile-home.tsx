@@ -16,7 +16,10 @@ import {
 } from "@/components/icons";
 import { displayFolder } from "@/lib/note-paths";
 import { relativeTime } from "@/lib/relative-time";
+import { NEXT_THEME, setThemePref, THEME_LABEL, useThemePref } from "@/components/theme";
 import { Menu } from "./menu";
+import { BacklogQuick, ListsQuick } from "./sidebar-quick";
+import { ThemeIcon } from "./theme-button";
 import { prefetchNote } from "./note-cache";
 import { NoteLink } from "./note-link";
 import { Tree } from "./sidebar";
@@ -26,9 +29,10 @@ import { useVault } from "./vault-context";
 
 /** Tela "Notas" do celular (artboard Mobile · arquivos). */
 export function MobileHome() {
+  const themePref = useThemePref();
   const { notes, creating, createNote, openNewFolder, openSearch } = useVault();
   const { openPeriodic } = usePeriodicNotes();
-  const [tab, setTab] = useState<"recent" | "folders">("recent");
+  const [tab, setTab] = useState<"recent" | "folders" | "backlog" | "lists">("recent");
   const recent = useMemo(
     () => [...notes].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
     [notes],
@@ -67,7 +71,14 @@ export function MobileHome() {
           label="Conta"
           trigger={<SlidersIcon size={22} />}
           triggerClassName="flex size-11 items-center justify-center rounded-[10px] text-muted active:bg-card"
-          items={[{ label: "Sair", icon: <LogoutIcon size={15} />, onSelect: () => void signOut() }]}
+          items={[
+            {
+              label: THEME_LABEL[themePref],
+              icon: <ThemeIcon pref={themePref} size={15} />,
+              onSelect: () => setThemePref(NEXT_THEME[themePref]),
+            },
+            { label: "Sair", icon: <LogoutIcon size={15} />, onSelect: () => void signOut() },
+          ]}
         />
       </header>
 
@@ -119,6 +130,8 @@ export function MobileHome() {
           [
             ["recent", "Recentes"],
             ["folders", "Pastas"],
+            ["backlog", "Pendências"],
+            ["lists", "Listas"],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -127,7 +140,7 @@ export function MobileHome() {
             role="tab"
             aria-selected={tab === key}
             onClick={() => setTab(key)}
-            className={`h-9 flex-1 rounded-[9px] text-sm font-medium ${
+            className={`h-9 min-w-0 flex-1 truncate rounded-[9px] px-1 text-[13px] font-medium ${
               tab === key ? "bg-active text-text-strong" : "text-muted"
             }`}
           >
@@ -144,6 +157,10 @@ export function MobileHome() {
             </span>
             <p className="text-[15px] text-muted">Nenhuma nota ainda. Toque em “Nova nota” para começar.</p>
           </div>
+        ) : tab === "backlog" ? (
+          <BacklogQuick />
+        ) : tab === "lists" ? (
+          <ListsQuick />
         ) : tab === "recent" ? (
           <ul>
             {recent.map((n) => (
@@ -161,7 +178,7 @@ export function MobileHome() {
                     </span>
                   </div>
                   {n.excerpt && (
-                    <p className="mt-0.5 line-clamp-2 text-sm leading-[1.45] text-[#a3a8b5]">{n.excerpt}</p>
+                    <p className="mt-0.5 line-clamp-2 text-sm leading-[1.45] text-quote">{n.excerpt}</p>
                   )}
                   <div className="mt-1 truncate text-xs text-accent">{displayFolder(n.path)}</div>
                 </NoteLink>

@@ -13,6 +13,7 @@ import {
   SearchIcon,
 } from "@/components/icons";
 import { BUJO_SCREENS } from "./bujo-screens";
+import { ThemeButton } from "./theme-button";
 import type { NoteMeta } from "@/lib/note-paths";
 import { MobileHome } from "./mobile-home";
 import { Sidebar } from "./sidebar";
@@ -107,6 +108,7 @@ function Layout({ children }: { children: ReactNode }) {
           </Link>
         ))}
         <div className="flex-1" />
+        <ThemeButton />
         <form action={signOut}>
           <button
             type="submit"
