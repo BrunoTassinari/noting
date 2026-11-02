@@ -1,0 +1,56 @@
+# Backup diário das notas: exporta tudo para .md e faz commit num
+# repositório privado separado. O histórico do Git vira o histórico de
+# versões das notas.
+#
+# Configure em Settings → Secrets and variables → Actions deste repositório:
+#   Secrets:   DATABASE_URL       (mesmo valor usado na Vercel)
+#              BACKUP_REPO_TOKEN  (token com escrita só no repositório de backup)
+#   Variables: BACKUP_REPO        (ex.: seu-usuario/noting-backup)
+#              BACKUP_EMAIL       (opcional: seu e-mail de login no app)
+name: Backup das notas
+
+on:
+  schedule:
+    - cron: "17 6 * * *" # todo dia, 03:17 em Brasília
+  workflow_dispatch: {}
+
+concurrency: backup
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --ignore-scripts
+
+      - name: Baixa o repositório de backup
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.BACKUP_REPO }}
+          token: ${{ secrets.BACKUP_REPO_TOKEN }}
+          path: vault-backup
+
+      - name: Exporta as notas
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BACKUP_EMAIL: ${{ vars.BACKUP_EMAIL }}
+        run: npm run export-vault -- vault-backup --mirror ${BACKUP_EMAIL:+--email "$BACKUP_EMAIL"}
+
+      - name: Commit e push (só se algo mudou)
+        working-directory: vault-backup
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Nada mudou desde o último backup."
+            exit 0
+          fi
+          git -c user.name="Noting backup" -c user.email="noting-backup@users.noreply.github.com" \
+            commit -q -m "Backup $(date -u +'%Y-%m-%d %H:%M') UTC"
+          git push

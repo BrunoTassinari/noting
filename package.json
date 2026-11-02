@@ -11,7 +11,8 @@
     "db:migrate": "drizzle-kit migrate",
     "create-user": "tsx scripts/create-user.ts",
     "reindex-links": "tsx scripts/reindex-links.ts",
-    "import-vault": "tsx scripts/import-vault.ts"
+    "import-vault": "tsx scripts/import-vault.ts",
+    "export-vault": "tsx scripts/export-vault.ts"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.4",

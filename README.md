@@ -81,6 +81,38 @@ DATABASE_URL="postgresql://..." npm run import-vault -- "/caminho/do/vault" --em
 - No fim, os links e backlinks são reconstruídos. Pode rodar quantas vezes
   quiser.
 
+## Exportar e backup automático
+
+O caminho inverso do importador: gera uma pasta de `.md` (abre no Obsidian).
+
+```bash
+DATABASE_URL="postgresql://..." npm run export-vault -- "/caminho/destino" --email voce@exemplo.com
+```
+
+- A nota "Nota" na pasta `Pasta/Sub` vira `Pasta/Sub/Nota.md`, com o
+  conteúdo exato e a data de modificação da nota.
+- `--mirror` deixa a pasta igual ao app: apaga os `.md` de notas que não
+  existem mais. Pastas ocultas (`.git`, `.obsidian`) nunca são tocadas.
+
+### Backup diário no GitHub
+
+A action `.github/workflows/backup.yml` roda todo dia às 03:17 (Brasília),
+exporta tudo e faz commit num repositório privado separado. O histórico do
+Git desse repositório é o histórico de versões das notas.
+
+1. Crie um repositório **privado** vazio (ex.: `noting-backup`), marcando
+   "Add a README" para ele já ter um commit.
+2. Crie um token *fine-grained* em GitHub → Settings → Developer settings →
+   Personal access tokens, com acesso **só** a esse repositório e permissão
+   *Contents: Read and write*.
+3. Neste repositório (o do app), em Settings → Secrets and variables →
+   Actions:
+   - Secrets: `DATABASE_URL` (o mesmo da Vercel) e `BACKUP_REPO_TOKEN`
+     (o token do passo 2).
+   - Variables: `BACKUP_REPO` = `seu-usuario/noting-backup`. Opcional:
+     `BACKUP_EMAIL`, se houver mais de um usuário no app.
+4. Em Actions → "Backup das notas" → *Run workflow* para testar na hora.
+
 ## Comandos úteis
 
 | Comando | Para quê |
@@ -89,6 +121,7 @@ DATABASE_URL="postgresql://..." npm run import-vault -- "/caminho/do/vault" --em
 | `npm run create-user -- email "senha" "Nome"` | Cria usuário ou redefine a senha |
 | `npm run reindex-links` | Reconstrói a tabela de links/backlinks a partir dos `[[links]]` |
 | `npm run import-vault -- <pasta> --email <e-mail>` | Importa uma pasta de `.md` (veja acima) |
+| `npm run export-vault -- <pasta> [--mirror]` | Exporta as notas para `.md` (veja acima) |
 
 Para rodar contra o banco de produção, prefixe com `DATABASE_URL="postgresql://..."`.
 
