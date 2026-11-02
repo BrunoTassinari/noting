@@ -8,7 +8,7 @@ import { EditorView, keymap, placeholder } from "@codemirror/view";
 import { useEffect, useRef } from "react";
 import type { NoteMeta } from "@/lib/note-paths";
 import { continueBujoTask, cycleTaskState, type FormatKind, runFormat } from "./commands";
-import { bujoWidgets } from "./bujo-widgets";
+import { bujoNote, bujoWidgets, type NoteInfo } from "./bujo-widgets";
 import { livePreview, taskToggle } from "./live-preview";
 import { editorHighlight, editorTheme } from "./theme";
 import { slashCommandSource } from "./slash-commands";
@@ -30,6 +30,8 @@ export type MarkdownEditorProps = {
   linkTargets: { notes: NoteMeta[]; selfId?: string };
   /** Linha (1…) onde está o cursor, a cada mudança. */
   onCursorLine?: (line: number) => void;
+  /** Pasta e título da nota (o formulário do dia descobre a data por eles). */
+  note?: NoteInfo;
   /** Chamado quando o editor terminou de montar, com comandos para o pai. */
   onReady?: (api: EditorApi) => void;
 };
@@ -58,13 +60,14 @@ export default function MarkdownEditor({
   onOpenWikilink,
   linkTargets,
   onCursorLine,
+  note,
   onReady,
 }: MarkdownEditorProps) {
   const host = useRef<HTMLDivElement>(null);
-  const callbacks = useRef({ onChange, onOpenWikilink, linkTargets, onCursorLine });
+  const callbacks = useRef({ onChange, onOpenWikilink, linkTargets, onCursorLine, note });
 
   useEffect(() => {
-    callbacks.current = { onChange, onOpenWikilink, linkTargets, onCursorLine };
+    callbacks.current = { onChange, onOpenWikilink, linkTargets, onCursorLine, note };
   });
 
   useEffect(() => {
@@ -118,6 +121,7 @@ export default function MarkdownEditor({
           editorTheme,
           editorHighlight,
           livePreview,
+          bujoNote.of(() => callbacks.current.note ?? null),
           bujoWidgets,
           wikilinkAutocomplete(() => callbacks.current.linkTargets, [slashCommandSource]),
           taskToggle,
