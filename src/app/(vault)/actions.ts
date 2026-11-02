@@ -11,6 +11,7 @@ import {
   deleteNote,
   moveNote,
   NoteError,
+  type RelinkResult,
   renameNote,
   saveConflictCopy,
   updateNoteBody,
@@ -128,12 +129,29 @@ export async function openPeriodicNoteAction(
   redirect(`/n/${id}`);
 }
 
-export async function renameNoteAction(id: string, title: string): Promise<ActionResult> {
-  return run((userId) => renameNote(userId, id, title));
+/** Renomear/mover: `relinked` = ids das outras notas com [[links]] reescritos. */
+export type RelinkActionResult = { ok: true; relinked: string[] } | { ok: false; error: string };
+
+async function runRelink(fn: (userId: string) => Promise<RelinkResult>): Promise<RelinkActionResult> {
+  const user = await requireUser();
+  let relinked: string[];
+  try {
+    relinked = (await fn(user.id)).updated;
+  } catch (err) {
+    if (err instanceof NoteError) return { ok: false, error: err.message };
+    console.error(err);
+    return { ok: false, error: "Algo deu errado. Tente de novo." };
+  }
+  refresh();
+  return { ok: true, relinked };
 }
 
-export async function moveNoteAction(id: string, path: string): Promise<ActionResult> {
-  return run((userId) => moveNote(userId, id, path));
+export async function renameNoteAction(id: string, title: string): Promise<RelinkActionResult> {
+  return runRelink((userId) => renameNote(userId, id, title));
+}
+
+export async function moveNoteAction(id: string, path: string): Promise<RelinkActionResult> {
+  return runRelink((userId) => moveNote(userId, id, path));
 }
 
 export async function deleteNoteAction(id: string): Promise<ActionResult> {

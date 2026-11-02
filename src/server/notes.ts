@@ -1,8 +1,10 @@
 import "server-only";
-import { and, asc, eq, like, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { notes } from "@/db/schema";
+import type { DbLike } from "@/db/link-index";
+import { notes, trash } from "@/db/schema";
 import { makeExcerpt } from "@/lib/markdown-text";
+import { type RelinkChange, rewriteLinks } from "@/lib/relink";
 import { linkersOf, mentionersOf, rebuildLinks } from "./links";
 import {
   DEFAULT_TITLE,
@@ -71,9 +73,14 @@ export async function getNote(userId: string, id: string): Promise<NoteFull | nu
 }
 
 /** Primeiro título livre na pasta: "Sem título", "Sem título 2", ... */
-async function freeTitle(userId: string, path: string, base: string): Promise<string> {
+export async function freeTitle(
+  userId: string,
+  path: string,
+  base: string,
+  q: DbLike = db,
+): Promise<string> {
   const escaped = base.replace(/[\\%_]/g, (c) => `\\${c}`);
-  const rows = await db
+  const rows = await q
     .select({ title: notes.title })
     .from(notes)
     .where(
@@ -120,26 +127,6 @@ export async function createNote(
     }
   }
   throw new NoteError(DUPLICATE_MESSAGE);
-}
-
-async function updateOwned(
-  userId: string,
-  id: string,
-  values: Partial<{ path: string; title: string; body: string }>,
-): Promise<NoteMeta> {
-  if (!isUuid(id)) throw new NoteError("Nota não encontrada.");
-  try {
-    const [row] = await db
-      .update(notes)
-      .set(values)
-      .where(and(eq(notes.userId, userId), eq(notes.id, id)))
-      .returning(metaColumns);
-    if (!row) throw new NoteError("Nota não encontrada.");
-    return toMeta(row);
-  } catch (err) {
-    if (isUniqueViolation(err)) throw new NoteError(DUPLICATE_MESSAGE);
-    throw err;
-  }
 }
 
 /** Hash do corpo calculado no banco (igual ao SHA-256 hex do cliente). */
@@ -194,39 +181,104 @@ export async function saveConflictCopy(userId: string, id: string, body: string)
   return toMeta(row);
 }
 
+export type RelinkResult = {
+  meta: NoteMeta;
+  /** Outras notas cujos [[links]] foram reescritos. */
+  updated: string[];
+};
+
 /**
- * Renomear ou mover muda a quem os [[links]] apontam: reconstrói os links
- * de quem apontava para a nota, de quem menciona o novo nome e dela mesma.
+ * Renomear ou mover: numa transação, grava o nome/pasta novos, reescreve os
+ * [[links]] das outras notas que apontavam para ela (ver lib/relink) e
+ * reconstrói os links de quem apontava, de quem menciona o novo nome e dela.
+ * Se uma nota reescrita estiver aberta em outro aparelho, o autosave de lá
+ * detecta o conflito pelo hash do corpo.
  */
 async function updateAndRelink(
   userId: string,
   id: string,
   values: Partial<{ path: string; title: string }>,
-) {
+  kind: RelinkChange["kind"],
+): Promise<RelinkResult> {
   if (!isUuid(id)) throw new NoteError("Nota não encontrada.");
-  const before = await linkersOf(db, userId, id);
-  const meta = await updateOwned(userId, id, values);
-  const mentioners = await mentionersOf(db, userId, meta.title);
-  await rebuildLinks(db, userId, [...before, ...mentioners, id]);
-  return meta;
+  try {
+    return await db.transaction(async (tx) => {
+      const before = (
+        await tx.select(metaColumns).from(notes).where(eq(notes.userId, userId))
+      ).map(toMeta);
+      if (!before.some((n) => n.id === id)) throw new NoteError("Nota não encontrada.");
+      const linkers = (await linkersOf(tx, userId, id)).filter((x) => x !== id);
+
+      const [row] = await tx
+        .update(notes)
+        .set(values)
+        .where(and(eq(notes.userId, userId), eq(notes.id, id)))
+        .returning(metaColumns);
+      const meta = toMeta(row);
+      const change: RelinkChange = {
+        before,
+        after: before.map((n) => (n.id === id ? { ...n, path: meta.path, title: meta.title } : n)),
+        targetId: id,
+        kind,
+      };
+
+      const updated: string[] = [];
+      const sources = linkers.length
+        ? await tx
+            .select({ id: notes.id, path: notes.path, body: notes.body })
+            .from(notes)
+            .where(and(eq(notes.userId, userId), inArray(notes.id, linkers)))
+        : [];
+      for (const src of sources) {
+        const res = rewriteLinks(src.body, src.path, change);
+        if (res.count === 0) continue;
+        await tx
+          .update(notes)
+          .set({ body: res.body })
+          .where(and(eq(notes.userId, userId), eq(notes.id, src.id)));
+        updated.push(src.id);
+      }
+
+      const mentioners = await mentionersOf(tx, userId, meta.title);
+      await rebuildLinks(tx, userId, [...linkers, ...mentioners, id]);
+      return { meta, updated };
+    });
+  } catch (err) {
+    if (isUniqueViolation(err)) throw new NoteError(DUPLICATE_MESSAGE);
+    throw err;
+  }
 }
 
 export function renameNote(userId: string, id: string, title: string) {
-  return updateAndRelink(userId, id, { title: unwrap(validateTitle(title)) });
+  return updateAndRelink(userId, id, { title: unwrap(validateTitle(title)) }, "rename");
 }
 
 export function moveNote(userId: string, id: string, path: string) {
-  return updateAndRelink(userId, id, { path: unwrap(validateFolder(path)) });
+  return updateAndRelink(userId, id, { path: unwrap(validateFolder(path)) }, "move");
 }
 
+/** Move a nota para a lixeira (dá para restaurar com o mesmo id). */
 export async function deleteNote(userId: string, id: string): Promise<void> {
   if (!isUuid(id)) throw new NoteError("Nota não encontrada.");
-  const before = await linkersOf(db, userId, id);
-  const deleted = await db
-    .delete(notes)
-    .where(and(eq(notes.userId, userId), eq(notes.id, id)))
-    .returning({ id: notes.id });
-  if (deleted.length === 0) throw new NoteError("Nota não encontrada.");
-  // Quem apontava para ela pode passar a apontar para outra de mesmo nome.
-  await rebuildLinks(db, userId, before);
+  await db.transaction(async (tx) => {
+    const before = await linkersOf(tx, userId, id);
+    const [note] = await tx
+      .delete(notes)
+      .where(and(eq(notes.userId, userId), eq(notes.id, id)))
+      .returning();
+    if (!note) throw new NoteError("Nota não encontrada.");
+    const row = {
+      id: note.id,
+      userId,
+      path: note.path,
+      title: note.title,
+      body: note.body,
+      createdAt: note.createdAt,
+      updatedAt: note.updatedAt,
+      deletedAt: new Date(),
+    };
+    await tx.insert(trash).values(row).onConflictDoUpdate({ target: trash.id, set: row });
+    // Quem apontava para ela pode passar a apontar para outra de mesmo nome.
+    await rebuildLinks(tx, userId, before);
+  });
 }

@@ -27,7 +27,7 @@ import {
 } from "@/lib/note-paths";
 import { makeExcerpt } from "@/lib/markdown-text";
 import { ConfirmDialog, PromptDialog } from "./dialogs";
-import { getCachedNote, updateCachedBody } from "./note-cache";
+import { forgetCachedNote, getCachedNote, updateCachedBody } from "./note-cache";
 import { SearchPalette } from "./search-palette";
 import {
   clearOptimisticNote,
@@ -55,6 +55,8 @@ type Vault = {
   openMove: (note: NoteMeta) => void;
   openDelete: (note: NoteMeta) => void;
   showError: (message: string) => void;
+  /** Renomear/mover reescreveu [[links]] nestas notas: limpa o cache e avisa. */
+  reportRelinked: (ids: string[]) => void;
   /** Mostra a nota na hora (do cache, ou um esqueleto). Chame no clique de um link. */
   openNote: (id: string) => void;
   /** openNote + navega (para quem não usa <Link>). */
@@ -139,6 +141,16 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
     toastTimer.current = setTimeout(() => setToast(null), 5000);
   }, []);
 
+  const reportRelinked = useCallback(
+    (ids: string[]) => {
+      ids.forEach(forgetCachedNote);
+      if (ids.length > 0) {
+        showError(`Links atualizados em ${ids.length} ${ids.length === 1 ? "nota" : "notas"}.`);
+      }
+    },
+    [showError],
+  );
+
   // Busca: Ctrl/Cmd+K de qualquer lugar (inclusive de dentro do editor).
   const [searchOpen, setSearchOpen] = useState(false);
   useEffect(() => {
@@ -206,6 +218,7 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
     openMove: (note) => setDialog({ kind: "move", note, at: activeId }),
     openDelete: (note) => setDialog({ kind: "delete", note, at: activeId }),
     showError,
+    reportRelinked,
   };
 
   return (
@@ -250,9 +263,11 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
         onSubmit={async (value) => {
           if (dialog.kind !== "move") return null;
           await whenCreated(dialog.note.id).catch(() => {});
-          const err = actionError(await moveNoteAction(dialog.note.id, value));
-          if (!err) close();
-          return err;
+          const res = await moveNoteAction(dialog.note.id, value);
+          if (!res.ok) return res.error;
+          close();
+          reportRelinked(res.relinked);
+          return null;
         }}
       />
 
@@ -263,12 +278,12 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
         message={
           dialog.kind === "delete" ? (
             <>
-              Excluir <strong className="text-text">{dialog.note.title}</strong> (
-              {displayFolder(dialog.note.path)})? Não dá para desfazer.
+              Mover <strong className="text-text">{dialog.note.title}</strong> (
+              {displayFolder(dialog.note.path)}) para a lixeira? Dá para restaurar em até 30 dias.
             </>
           ) : null
         }
-        confirmLabel="Excluir"
+        confirmLabel="Mover para a lixeira"
         onConfirm={async () => {
           if (dialog.kind !== "delete") return null;
           await whenCreated(dialog.note.id).catch(() => {});

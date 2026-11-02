@@ -100,14 +100,15 @@ export function MobileHome() {
         </div>
       </div>
 
-      <div className="flex shrink-0 gap-2 px-4 pb-3">
+      {/* Quebra de linha só se os atalhos não couberem numa linha. */}
+      <div className="flex shrink-0 flex-wrap gap-2 px-4 pb-3">
         {BUJO_SCREENS.map(({ href, label, Icon }) => (
           <Link
             key={href}
             href={href}
-            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-rail text-sm text-text active:bg-card"
+            className="flex h-11 flex-auto items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-border bg-rail px-2.5 text-[13px] text-text active:bg-card"
           >
-            <Icon size={18} className="text-accent" />
+            <Icon size={16} className="shrink-0 text-accent" />
             {label}
           </Link>
         ))}
