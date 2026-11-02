@@ -178,3 +178,39 @@ export function MoveIcon(props: IconProps) {
     </Base>
   );
 }
+
+export function SlidersIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M4 7h10M18 7h2M4 17h2M10 17h10" />
+      <circle cx="16" cy="7" r="2" />
+      <circle cx="8" cy="17" r="2" />
+    </Base>
+  );
+}
+
+export function MenuIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </Base>
+  );
+}
+
+export function TaskIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+      <path d="m8.5 12 2.5 2.5 4.5-5" />
+    </Base>
+  );
+}
+
+export function UndoIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M9 14 4 9l5-5" />
+      <path d="M4 9h10a6 6 0 0 1 0 12h-3" />
+    </Base>
+  );
+}

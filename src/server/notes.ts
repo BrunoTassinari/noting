@@ -1,7 +1,8 @@
 import "server-only";
-import { and, asc, eq, like, or } from "drizzle-orm";
+import { and, asc, eq, like, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { notes } from "@/db/schema";
+import { makeExcerpt } from "@/lib/markdown-text";
 import { linkersOf, mentionersOf, rebuildLinks } from "./links";
 import {
   DEFAULT_TITLE,
@@ -53,11 +54,11 @@ function unwrap<T>(r: { value: T } | { error: string }): T {
 
 export async function listNotes(userId: string): Promise<NoteMeta[]> {
   const rows = await db
-    .select(metaColumns)
+    .select({ ...metaColumns, head: sql<string>`left(${notes.body}, 600)` })
     .from(notes)
     .where(eq(notes.userId, userId))
     .orderBy(asc(notes.path), asc(notes.title));
-  return rows.map(toMeta);
+  return rows.map((r) => ({ ...toMeta(r), excerpt: makeExcerpt(r.head) }));
 }
 
 export async function getNote(userId: string, id: string): Promise<NoteFull | null> {

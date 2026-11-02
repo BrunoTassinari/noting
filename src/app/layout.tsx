@@ -21,6 +21,10 @@ export const viewport: Viewport = {
   themeColor: "#16171b",
   width: "device-width",
   initialScale: 1,
+  // Ocupa a tela toda no iPhone (safe areas tratadas no CSS) e, no Android,
+  // encolhe a página quando o teclado abre.
+  viewportFit: "cover",
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

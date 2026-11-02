@@ -6,12 +6,12 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { renameNoteAction, saveNoteBodyAction } from "@/app/(vault)/actions";
 import {
-  ArrowLeftIcon,
   CloseIcon,
   CloudAlertIcon,
   CloudCheckIcon,
   LinkIcon,
   ListIcon,
+  MenuIcon,
   MoreIcon,
   MoveIcon,
   PencilIcon,
@@ -28,7 +28,9 @@ import { sameWikilinkTargets, type Backlink } from "@/lib/wikilinks";
 import { parseHeadings } from "@/lib/outline";
 import type { EditorApi } from "@/components/editor/markdown-editor";
 import { Backlinks } from "./backlinks";
+import { MobileToolbar } from "./mobile-toolbar";
 import { Outline } from "./outline";
+import { Sheet } from "./sheet";
 import { Menu } from "./menu";
 import { whenCreated } from "./optimistic-note";
 import { actionError, useVault } from "./vault-context";
@@ -46,15 +48,24 @@ export function NoteView({
   /** Nota acabou de ser criada: foca o título para já renomear. */
   isNew?: boolean;
 }) {
-  const { openMove, openDelete } = useVault();
+  const { openMove, openDelete, touchNote } = useVault();
   const titleRef = useRef<HTMLInputElement>(null);
-  const { body, setBody, status, flush } = useAutosave(note.id, note.body);
+  const { body, setBody, status, flush } = useAutosave(note.id, note.body, touchNote);
   const editorApi = useRef<EditorApi | null>(null);
   const [cursorLine, setCursorLine] = useState<number | null>(null);
   const headings = useMemo(() => parseHeadings(body), [body]);
   const [panels, setPanels] = useState({ backlinks: true, outline: true });
 
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const backlinkCount = note.backlinks?.length ?? 0;
+
   const menuItems = [
+    {
+      label: `Backlinks (${backlinkCount}) e tópicos`,
+      icon: <LinkIcon size={15} />,
+      className: "lg:hidden",
+      onSelect: () => setSheetOpen(true),
+    },
     { label: "Renomear", icon: <PencilIcon size={15} />, onSelect: () => titleRef.current?.focus() },
     { label: "Mover para…", icon: <MoveIcon size={15} />, onSelect: () => openMove(note) },
     { label: "Excluir", icon: <TrashIcon size={15} />, danger: true, onSelect: () => openDelete(note) },
@@ -80,10 +91,10 @@ export function NoteView({
       <div className="flex h-[60px] shrink-0 items-center gap-1 border-b border-border bg-panel px-2 md:hidden">
         <Link
           href="/"
-          aria-label="Voltar para as notas"
+          aria-label="Abrir arquivos"
           className="flex size-11 items-center justify-center rounded-[10px] text-text"
         >
-          <ArrowLeftIcon size={22} />
+          <MenuIcon size={22} />
         </Link>
         <div className="min-w-0 flex-1 text-center">
           <div className="truncate text-[15px] font-semibold text-text-strong">{note.title}</div>
@@ -186,6 +197,22 @@ export function NoteView({
           </div>
         </aside>
       </div>
+
+      <MobileToolbar onFormat={(kind) => editorApi.current?.format(kind)} />
+
+      <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)} title="Backlinks e tópicos">
+        <div className="flex flex-col gap-6 pt-2">
+          <Backlinks items={note.backlinks ?? []} />
+          <Outline
+            headings={headings}
+            cursorLine={cursorLine}
+            onSelect={(line) => {
+              setSheetOpen(false);
+              editorApi.current?.goToLine(line);
+            }}
+          />
+        </div>
+      </Sheet>
 
       {/* Barra de status (desktop) */}
       <div className="hidden h-7 shrink-0 items-center gap-4 border-t border-border bg-rail px-4 text-xs text-muted md:flex">
@@ -341,7 +368,11 @@ function countWords(text: string): number {
 }
 
 /** Salva o corpo com debounce, tenta de novo em caso de erro e não perde nada ao sair. */
-function useAutosave(noteId: string, initial: string) {
+function useAutosave(
+  noteId: string,
+  initial: string,
+  onSaved: (id: string, body: string) => void,
+) {
   const [body, setBodyState] = useState(initial);
   const [status, setStatus] = useState<SaveStatus>("saved");
   const latest = useRef(initial);
@@ -374,7 +405,10 @@ function useAutosave(noteId: string, initial: string) {
       ok = false;
     }
     saving.current = false;
-    if (ok) saved.current = value;
+    if (ok) {
+      saved.current = value;
+      onSaved(noteId, value);
+    }
     if (!ok) {
       setStatus("error");
       schedule(RETRY_DELAY_MS);
@@ -383,7 +417,7 @@ function useAutosave(noteId: string, initial: string) {
     } else {
       setStatus("saved");
     }
-  }, [noteId, schedule]);
+  }, [noteId, schedule, onSaved]);
 
   useEffect(() => {
     flushRef.current = flush;

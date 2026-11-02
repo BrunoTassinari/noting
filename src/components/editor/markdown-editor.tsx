@@ -7,6 +7,7 @@ import { EditorState } from "@codemirror/state";
 import { EditorView, keymap, placeholder } from "@codemirror/view";
 import { useEffect, useRef } from "react";
 import type { NoteMeta } from "@/lib/note-paths";
+import { type FormatKind, runFormat } from "./commands";
 import { livePreview, taskToggle } from "./live-preview";
 import { editorHighlight, editorTheme } from "./theme";
 import { wikilinkAutocomplete } from "./wikilink-autocomplete";
@@ -34,6 +35,8 @@ export type MarkdownEditorProps = {
 export type EditorApi = {
   /** Move o cursor para o início da linha e rola até ela. */
   goToLine: (line: number) => void;
+  /** Formatação da barra de ferramentas (negrito, lista, link...). */
+  format: (kind: FormatKind) => void;
 };
 
 /**
@@ -121,6 +124,7 @@ export default function MarkdownEditor({
         });
         view.focus();
       },
+      format: (kind) => runFormat(view, kind),
     });
     return () => view.destroy();
     // Não controlado: recria só se o componente remontar (troca de nota).

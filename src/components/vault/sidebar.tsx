@@ -2,12 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo } from "react";
-import { signOut } from "@/app/login/actions";
 import {
   ChevronDownIcon,
   ChevronRightIcon,
   FolderPlusIcon,
-  LogoutIcon,
   PencilIcon,
   PlusIcon,
   SearchIcon,
@@ -53,11 +51,6 @@ export function Sidebar() {
         >
           <FolderPlusIcon size={16} />
         </button>
-        <form action={signOut} className="md:hidden">
-          <button type="submit" aria-label="Sair" title="Sair" className={iconButton}>
-            <LogoutIcon size={18} />
-          </button>
-        </form>
       </div>
 
       <div className="shrink-0 px-4 pb-3 md:px-2.5 md:pb-2.5">
@@ -76,16 +69,6 @@ export function Sidebar() {
         {notes.length === 0 ? <EmptyVault /> : <Tree notes={notes} activeId={activeNote?.id} />}
       </nav>
 
-      {/* Botão flutuante no celular */}
-      <button
-        type="button"
-        disabled={creating}
-        onClick={() => createNote(currentFolder)}
-        className="fixed bottom-6 right-5 z-10 flex h-[52px] items-center gap-2 rounded-full bg-accent px-5 text-[15px] font-semibold text-accent-ink shadow-lg disabled:opacity-60 md:hidden"
-      >
-        <PlusIcon size={20} />
-        Nova nota
-      </button>
     </div>
   );
 }
@@ -101,7 +84,7 @@ function EmptyVault() {
 const rowBase =
   "flex w-full items-center gap-1.5 rounded-md pr-2 text-left min-h-11 md:min-h-7 md:h-7 text-[15px] md:text-[13px]";
 
-function Tree({ notes, activeId }: { notes: NoteMeta[]; activeId?: string }) {
+export function Tree({ notes, activeId }: { notes: NoteMeta[]; activeId?: string }) {
   const tree = useMemo(() => buildTree(notes), [notes]);
   const expanded = useExpandedFolders();
 

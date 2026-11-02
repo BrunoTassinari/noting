@@ -5,7 +5,9 @@ import type { ReactNode } from "react";
 import { signOut } from "@/app/login/actions";
 import { FolderIcon, LogoutIcon, SearchIcon } from "@/components/icons";
 import type { NoteMeta } from "@/lib/note-paths";
+import { MobileHome } from "./mobile-home";
 import { Sidebar } from "./sidebar";
+import { useVisualViewport } from "./use-visual-viewport";
 import { NoteView } from "./note-view";
 import { useVault, VaultProvider } from "./vault-context";
 
@@ -21,9 +23,16 @@ function Layout({ children }: { children: ReactNode }) {
   const { optimisticNote, openSearch } = useVault();
   const routeId = useParams<{ id?: string }>().id;
   const noteOpen = Boolean(routeId || optimisticNote);
+  const viewport = useVisualViewport();
 
   return (
-    <div className="flex h-dvh min-h-0 w-full overflow-hidden bg-bg">
+    <div
+      className="fixed inset-x-0 top-0 flex h-dvh min-h-0 w-full overflow-hidden bg-bg"
+      // Acompanha a área visível (teclado aberto no celular).
+      style={
+        viewport ? { height: viewport.height, transform: `translateY(${viewport.offsetTop}px)` } : undefined
+      }
+    >
       {/* Ribbon (desktop) */}
       <div className="hidden w-12 shrink-0 flex-col items-center gap-1 bg-rail py-2.5 md:flex">
         <span
@@ -55,14 +64,17 @@ function Layout({ children }: { children: ReactNode }) {
         </form>
       </div>
 
-      {/* Arquivos: tela cheia no celular quando nenhuma nota está aberta */}
-      <aside
-        className={`min-h-0 w-full shrink-0 border-border md:block md:w-[280px] md:border-r ${
-          noteOpen ? "hidden" : "block"
-        }`}
-      >
+      {/* Arquivos (desktop) */}
+      <aside className="hidden min-h-0 w-[280px] shrink-0 border-r border-border md:block">
         <Sidebar />
       </aside>
+
+      {/* Lista de notas (celular, quando nenhuma nota está aberta) */}
+      {!noteOpen && (
+        <div className="min-h-0 w-full md:hidden">
+          <MobileHome />
+        </div>
+      )}
 
       {/* Coluna principal */}
       <main className={`min-h-0 min-w-0 flex-1 flex-col md:flex ${noteOpen ? "flex" : "hidden"}`}>

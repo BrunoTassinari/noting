@@ -14,3 +14,11 @@ export function markdownToPlain(md: string): string {
     .replace(/(^|[^\w*])[*_]([^*_\n]+)[*_](?=[^\w*]|$)/g, "$1$2")
     .replace(/`([^`\n]+)`/g, "$1");
 }
+
+const EXCERPT_LENGTH = 160;
+
+/** Resumo em texto corrido do começo da nota (lista "Recentes" do celular). */
+export function makeExcerpt(body: string): string {
+  const flat = markdownToPlain(body.slice(0, 600)).replace(/\s+/g, " ").trim();
+  return flat.length > EXCERPT_LENGTH ? `${flat.slice(0, EXCERPT_LENGTH).trimEnd()}…` : flat;
+}

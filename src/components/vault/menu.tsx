@@ -6,6 +6,8 @@ export type MenuItem = {
   label: string;
   icon?: ReactNode;
   danger?: boolean;
+  /** Classes extras (ex.: "lg:hidden" para esconder em telas largas). */
+  className?: string;
   onSelect: () => void;
 };
 
@@ -67,7 +69,7 @@ export function Menu({
               }}
               className={`flex h-11 w-full items-center gap-2.5 rounded-md px-3 text-left text-sm hover:bg-active md:h-8 md:text-[13px] ${
                 item.danger ? "text-danger" : "text-text"
-              }`}
+              } ${item.className ?? ""}`}
             >
               {item.icon}
               {item.label}

@@ -25,6 +25,7 @@ import {
   normalizeFolder,
   type NoteMeta,
 } from "@/lib/note-paths";
+import { makeExcerpt } from "@/lib/markdown-text";
 import { ConfirmDialog, PromptDialog } from "./dialogs";
 import { SearchPalette } from "./search-palette";
 import {
@@ -52,6 +53,8 @@ type Vault = {
   openMove: (note: NoteMeta) => void;
   openDelete: (note: NoteMeta) => void;
   showError: (message: string) => void;
+  /** Uma nota foi salva: atualiza resumo e data na lista sem ir ao servidor. */
+  touchNote: (id: string, body: string) => void;
 };
 
 const VaultContext = createContext<Vault | null>(null);
@@ -88,14 +91,23 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
     if (optimistic && !optimistic.pending && optimistic.id !== params.id) clearOptimisticNote();
   }, [optimistic, params.id]);
 
+  // Saves recentes (o layout não é recarregado a cada autosave).
+  const [touched, setTouched] = useState<Record<string, { updatedAt: string; excerpt: string }>>({});
+  const touchNote = useCallback((id: string, body: string) => {
+    setTouched((t) => ({ ...t, [id]: { updatedAt: new Date().toISOString(), excerpt: makeExcerpt(body) } }));
+  }, []);
+
   // Árvore inclui a nota otimista enquanto o servidor não confirma.
-  const allNotes = useMemo(
-    () =>
+  const allNotes = useMemo(() => {
+    const base =
       optimisticNote && !notes.some((n) => n.id === optimisticNote.id)
         ? [...notes, optimisticNote]
-        : notes,
-    [notes, optimisticNote],
-  );
+        : notes;
+    return base.map((n) => {
+      const t = touched[n.id];
+      return t && t.updatedAt > n.updatedAt ? { ...n, ...t } : n;
+    });
+  }, [notes, optimisticNote, touched]);
   const activeNote = useMemo(
     () => allNotes.find((n) => n.id === activeId) ?? null,
     [allNotes, activeId],
@@ -160,6 +172,7 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
     createNote,
     openNewFolder: () => setDialog({ kind: "folder", at: activeId }),
     openSearch: () => setSearchOpen(true),
+    touchNote,
     openMove: (note) => setDialog({ kind: "move", note, at: activeId }),
     openDelete: (note) => setDialog({ kind: "delete", note, at: activeId }),
     showError,

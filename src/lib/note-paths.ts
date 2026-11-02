@@ -13,6 +13,8 @@ export type NoteMeta = {
   path: string;
   title: string;
   updatedAt: string; // ISO
+  /** Começo do texto, sem Markdown (só na listagem). */
+  excerpt?: string;
 };
 
 /** Normaliza uma pasta digitada: tira espaços e barras sobrando. */
