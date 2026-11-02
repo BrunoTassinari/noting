@@ -199,3 +199,94 @@ export const futureLogTemplate = () => ["# Future Log", "#BulletJournal", "", ""
 
 /** Título de seção do Future Log: "## 2026-12 · Dezembro 2026" */
 export const futureLogSection = (d: Day) => `## ${isoMonth(d)} · ${cap(MONTHS[M(d) - 1])} ${Y(d)}`;
+
+// ---------- Navegação e Future Log → mês ----------
+
+export type PeriodicKind = "day" | "week" | "month";
+
+/** Caminho e modelo da nota do dia/semana/mês que contém `d`. */
+export function periodicNote(kind: PeriodicKind, d: Day): { ref: NoteRef; template: string } {
+  if (kind === "week") return { ref: weeklyRef(d), template: weeklyTemplate(d) };
+  if (kind === "month") return { ref: monthlyRef(d), template: monthlyTemplate(d) };
+  return { ref: dailyRef(d), template: dailyTemplate(d) };
+}
+
+/** Nota periódica aberta → tipo e uma data dentro do período (ou null). */
+export function periodOf(r: NoteRef): { kind: PeriodicKind; day: Day } | null {
+  const daily = dayFromDaily(r);
+  if (daily) return { kind: "day", day: daily };
+  const week = weekStartFromWeekly(r);
+  if (week) return { kind: "week", day: week };
+  const month = monthFromMonthly(r);
+  if (month) return { kind: "month", day: month };
+  return null;
+}
+
+/** Mesmo período deslocado `n` vezes (dias, semanas ou meses). */
+export function shiftPeriod(kind: PeriodicKind, d: Day, n: number): Day {
+  if (kind === "week") return addDays(d, 7 * n);
+  if (kind === "month") return addMonths(d, n);
+  return addDays(d, n);
+}
+
+/** "2026.W45" na pasta Weekly → domingo que começa a semana (ou null). */
+export function weekStartFromWeekly(r: NoteRef): Day | null {
+  if (r.path !== WEEKLY_FOLDER) return null;
+  const m = /^(\d{4})\.W(\d{2})$/.exec(r.title);
+  if (!m) return null;
+  const start = addDays(sundayOf(day(+m[1], 1, 1)), (+m[2] - 1) * 7);
+  // Confere a volta (ex.: W53 que não existe naquele ano).
+  return weeklyRef(start).title === r.title ? start : null;
+}
+
+/** "- [ ] tarefa" em qualquer indentação: prefixo até o "[" e o estado. */
+const TASK_STATE_RE = /^(\s*[-*+]\s+\[)([ xX><\-o/])\](?=\s|$)/;
+
+/**
+ * Migra a seção do mês `d` do Future Log ("## 2026-12 · Dezembro 2026"):
+ *   - [ ] (e [/]) → copiadas; na origem viram [>];
+ *   - [o] e notas soltas → copiadas, origem intacta;
+ *   - [x], [>], [<], [-] → ficam (com os sub-itens).
+ * Sub-itens acompanham o item de cima. Devolve as linhas copiadas e o Future
+ * Log atualizado, ou null se a seção não existe ou não tem nada a copiar.
+ */
+export function migrateFutureLog(futureLog: string, d: Day): { items: string[]; futureLog: string } | null {
+  const lines = futureLog.split("\n");
+  const key = `## ${isoMonth(d)}`;
+  const start = lines.findIndex((l) => l.trimEnd() === key || l.startsWith(`${key} `));
+  if (start === -1) return null;
+  const items: string[] = [];
+  let changed = false;
+  let skipping = false; // dentro dos sub-itens de um item que não é copiado
+  for (let i = start + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (/^#{1,2}\s/.test(line)) break; // próxima seção
+    if (line.trim() === "") continue;
+    const child = /^\s/.test(line);
+    if (child && skipping) continue;
+    const m = TASK_STATE_RE.exec(line);
+    const state = m?.[2];
+    if (state && state !== " " && state !== "/" && state !== "o") {
+      if (!child) skipping = true;
+      continue;
+    }
+    if (!child) skipping = false;
+    items.push(line);
+    if (m && (state === " " || state === "/")) {
+      lines[i] = `${m[1]}>]${line.slice(m[0].length)}`;
+      changed = true;
+    }
+  }
+  if (items.length === 0) return null;
+  return { items, futureLog: changed ? lines.join("\n") : futureLog };
+}
+
+/** Põe `items` logo abaixo de "## Tarefas" (corpo do modelo mensal). */
+export function withMonthTasks(body: string, items: string[]): string {
+  const lines = body.split("\n");
+  const i = lines.indexOf("## Tarefas");
+  if (i === -1 || items.length === 0) return body;
+  let end = i + 1;
+  while (end < lines.length && lines[end].trim() === "") end++;
+  return [...lines.slice(0, i + 1), "", ...items, "", ...lines.slice(end)].join("\n");
+}

@@ -214,3 +214,44 @@ export function UndoIcon(props: IconProps) {
     </Base>
   );
 }
+
+export function ChevronLeftIcon(props: IconProps) {
+  return (
+    <Base strokeWidth={2} {...props}>
+      <path d="m15 6-6 6 6 6" />
+    </Base>
+  );
+}
+
+/** Calendário com o dia marcado ("Hoje"). */
+export function CalendarIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <rect x="4" y="5" width="16" height="15" rx="2" />
+      <path d="M4 10h16M8.5 3v4M15.5 3v4" />
+      <rect x="8" y="13" width="3.5" height="3.5" rx="0.8" />
+    </Base>
+  );
+}
+
+/** Calendário com uma linha destacada (semana). */
+export function CalendarWeekIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <rect x="4" y="5" width="16" height="15" rx="2" />
+      <path d="M4 10h16M8.5 3v4M15.5 3v4" />
+      <path d="M7.5 14.5h9" strokeWidth={2.6} />
+    </Base>
+  );
+}
+
+/** Calendário com a grade do mês. */
+export function CalendarMonthIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <rect x="4" y="5" width="16" height="15" rx="2" />
+      <path d="M4 10h16M8.5 3v4M15.5 3v4" />
+      <path d="M8 13.5h.01M12 13.5h.01M16 13.5h.01M8 17h.01M12 17h.01M16 17h.01" strokeWidth={2.4} />
+    </Base>
+  );
+}
