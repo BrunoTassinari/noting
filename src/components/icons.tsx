@@ -214,3 +214,50 @@ export function UndoIcon(props: IconProps) {
     </Base>
   );
 }
+
+/** Tarefa migrada: caixa com seta para a direita. */
+export function MigrateIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M14 4H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h7" />
+      <path d="M10 12h10M17 9l3 3-3 3" />
+    </Base>
+  );
+}
+
+/** Tarefa cancelada: caixa riscada. */
+export function CancelTaskIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+      <path d="M8 12h8" />
+    </Base>
+  );
+}
+
+/** Pendências: bandeja de entrada. */
+export function InboxIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M4 13l2.5-7.5A2 2 0 0 1 8.4 4h7.2a2 2 0 0 1 1.9 1.5L20 13" />
+      <path d="M4 13v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5h-4.5l-1.5 2.5h-4L8.5 13z" />
+    </Base>
+  );
+}
+
+export function CalendarIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <rect x="4" y="5" width="16" height="15" rx="2.5" />
+      <path d="M4 10h16M8.5 3v4M15.5 3v4" />
+    </Base>
+  );
+}
+
+export function CheckIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="m5 12.5 4.5 4.5L19 7.5" />
+    </Base>
+  );
+}
