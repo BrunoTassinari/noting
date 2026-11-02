@@ -22,7 +22,8 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Tudo, exceto a API de auth, arquivos estáticos e assets do Next.
-    "/((?!api/auth|_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|offline.html|icons/|icon.svg|apple-icon.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // Tudo, exceto a API de auth, a de captura (responde 401 em JSON), arquivos
+    // estáticos, a página offline e assets do Next.
+    "/((?!api/auth|api/capture|_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|offline.html|capture-queue.js|icons/|icon.svg|apple-icon.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

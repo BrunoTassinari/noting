@@ -156,4 +156,18 @@ export const links = pgTable(
   ],
 );
 
+// Capturas offline já aplicadas (ids gerados no aparelho). Só serve para não
+// duplicar uma captura reenviada; linhas antigas são apagadas pela própria rota.
+export const captures = pgTable(
+  "captures",
+  {
+    id: uuid("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("captures_created_idx").on(t.createdAt)],
+);
+
 export type Note = typeof notes.$inferSelect;
