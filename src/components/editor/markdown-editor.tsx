@@ -8,6 +8,7 @@ import { EditorView, keymap, placeholder } from "@codemirror/view";
 import { useEffect, useRef } from "react";
 import type { NoteMeta } from "@/lib/note-paths";
 import { continueBujoTask, cycleTaskState, type FormatKind, runFormat } from "./commands";
+import { bujoWidgets } from "./bujo-widgets";
 import { livePreview, taskToggle } from "./live-preview";
 import { editorHighlight, editorTheme } from "./theme";
 import { wikilinkAutocomplete } from "./wikilink-autocomplete";
@@ -109,6 +110,7 @@ export default function MarkdownEditor({
           editorTheme,
           editorHighlight,
           livePreview,
+          bujoWidgets,
           wikilinkAutocomplete(() => callbacks.current.linkTargets),
           taskToggle,
           openLinks,

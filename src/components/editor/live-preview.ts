@@ -9,6 +9,7 @@ import {
   WidgetType,
 } from "@codemirror/view";
 import { normalizeState, TASK_LABELS, type TaskState } from "@/lib/tasks";
+import { bujoRanges } from "./bujo-widgets";
 
 // Renderização ao vivo, no estilo do Obsidian: fora da linha em edição a
 // sintaxe Markdown some e o texto aparece formatado; na linha do cursor a
@@ -115,13 +116,16 @@ function build(view: EditorView, focused: boolean): DecorationSet {
   const decos: Range<Decoration>[] = [];
   const lineClass = (pos: number, cls: string) =>
     decos.push(Decoration.line({ class: cls }).range(state.doc.lineAt(pos).from));
-  const codeRanges: [number, number][] = [];
+  // Frontmatter e blocos ```bujo-*```: tratados em bujo-widgets.ts.
+  const skip = bujoRanges(state);
+  const codeRanges: [number, number][] = [...skip];
 
   for (const { from, to } of view.visibleRanges) {
     syntaxTree(state).iterate({
       from,
       to,
       enter: (node) => {
+        if (skip.some(([a, b]) => node.from >= a && node.to <= b)) return false;
         const name = node.name;
         const m = /^ATXHeading(\d)$/.exec(name);
         if (m) {
