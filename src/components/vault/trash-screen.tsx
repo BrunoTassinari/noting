@@ -84,7 +84,7 @@ export function TrashScreen() {
         title="Lixeira"
         subtitle={
           items
-            ? `${items.length} ${items.length === 1 ? "nota" : "notas"} · apagadas de vez após ${KEEP_DAYS} dias`
+            ? `${items.length} ${items.length === 1 ? "nota" : "notas"} · somem após ${KEEP_DAYS} dias`
             : "Carregando…"
         }
         actions={
@@ -97,7 +97,7 @@ export function TrashScreen() {
               className="flex h-11 shrink-0 items-center gap-2 rounded-lg border border-border px-3 text-sm text-danger hover:bg-active disabled:opacity-50 md:h-8"
             >
               <TrashIcon size={15} />
-              Esvaziar lixeira
+              Esvaziar<span className="hidden md:inline"> lixeira</span>
             </button>
           )
         }
