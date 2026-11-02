@@ -2,32 +2,223 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#16171b">
-<title>Sem conexão · Noting</title>
+<title>Captura · Noting</title>
 <style>
   :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
   body {
-    margin: 0; min-height: 100dvh; display: flex; align-items: center; justify-content: center;
-    background: #16171b; color: #dcdee4; padding: 24px; box-sizing: border-box;
-    font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; text-align: center;
+    margin: 0; min-height: 100dvh; background: #16171b; color: #dcdee4;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.5;
+    padding: calc(env(safe-area-inset-top) + 20px) 16px calc(env(safe-area-inset-bottom) + 24px);
   }
-  .card { max-width: 340px; }
-  img { width: 56px; height: 56px; border-radius: 14px; }
-  h1 { margin: 20px 0 8px; font-size: 20px; font-weight: 600; color: #fff; }
-  p { margin: 0 0 24px; font-size: 15px; line-height: 1.5; color: #8d92a0; }
-  button {
-    height: 44px; padding: 0 20px; border: 0; border-radius: 10px; cursor: pointer;
-    background: #7fd1c4; color: #101114; font-family: inherit; font-size: 15px; font-weight: 600;
+  main { max-width: 520px; margin: 0 auto; }
+  header { display: flex; align-items: center; gap: 12px; }
+  header img { width: 40px; height: 40px; border-radius: 10px; flex: none; }
+  h1 { margin: 0; font-size: 19px; font-weight: 600; color: #fff; }
+  .status { margin: 2px 0 0; font-size: 13.5px; color: #8d92a0; }
+  .status.ok { color: #7fd1c4; }
+  .status.warn { color: #f0c78c; }
+  .status a { color: #7fd1c4; }
+  form { margin-top: 20px; background: #1b1c21; border: 1px solid #2a2c33; border-radius: 12px; padding: 12px; }
+  label { display: block; font-size: 13px; color: #8d92a0; margin: 0 0 8px 2px; }
+  textarea {
+    display: block; width: 100%; min-height: 108px; resize: vertical; padding: 10px 12px;
+    background: #16171b; color: #dcdee4; border: 1px solid #2a2c33; border-radius: 8px;
+    font: inherit; font-size: 16px; outline: none;
   }
+  textarea:focus { border-color: #7fd1c4; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
+  .hint { font-size: 12.5px; color: #8d92a0; }
+  button, .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 44px; padding: 0 18px; border: 0; border-radius: 10px; cursor: pointer;
+    font: inherit; font-size: 15px; font-weight: 600; text-decoration: none;
+  }
+  .primary { background: #7fd1c4; color: #101114; }
+  .primary:disabled { opacity: .45; cursor: default; }
+  .secondary { background: #1f2126; color: #dcdee4; border: 1px solid #2a2c33; }
+  h2 { margin: 28px 0 8px; font-size: 13px; font-weight: 600; color: #8d92a0; text-transform: uppercase; letter-spacing: .04em; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li {
+    display: flex; align-items: flex-start; gap: 8px; padding: 10px 4px 10px 12px;
+    background: #1b1c21; border: 1px solid #2a2c33; border-radius: 10px; margin-bottom: 8px;
+  }
+  li .text { flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; padding-top: 2px; }
+  li .meta { display: block; font-size: 12.5px; color: #8d92a0; margin-top: 2px; }
+  .icon-btn {
+    flex: none; width: 44px; height: 44px; min-height: 0; padding: 0; margin: -8px 0 -8px;
+    background: transparent; color: #8d92a0; border-radius: 8px;
+  }
+  .icon-btn:hover, .icon-btn:focus-visible { background: #1f2126; color: #f08c8c; }
+  .empty { color: #8d92a0; font-size: 14px; margin: 0; }
+  .actions { margin-top: 28px; display: flex; gap: 10px; flex-wrap: wrap; }
+  svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 </style>
 </head>
 <body>
-  <div class="card">
+<main>
+  <header>
     <img src="/icons/icon-192.png" alt="">
-    <h1>Sem conexão</h1>
-    <p>O Noting precisa de internet para abrir suas notas. Confira a conexão e tente de novo.</p>
-    <button type="button" onclick="location.reload()">Tentar de novo</button>
+    <div>
+      <h1 id="title">Sem conexão</h1>
+      <p id="status" class="status" role="status" aria-live="polite">As capturas ficam guardadas neste aparelho.</p>
+    </div>
+  </header>
+
+  <form id="form">
+    <label for="text">Captura rápida — vai para a nota do dia quando a internet voltar</label>
+    <textarea id="text" name="text" maxlength="5000" placeholder="Escreva uma ideia, tarefa ou lembrete" enterkeyhint="done"></textarea>
+    <div class="row">
+      <span class="hint" id="hint"></span>
+      <button type="submit" class="primary" id="save" disabled>Guardar</button>
+    </div>
+  </form>
+
+  <h2 id="queue-title">Na fila</h2>
+  <ul id="queue"></ul>
+  <p class="empty" id="empty">Nada na fila.</p>
+
+  <div class="actions">
+    <a class="btn primary" id="open" href="/" hidden>Abrir o Noting</a>
+    <button type="button" class="secondary" id="retry">Tentar de novo</button>
   </div>
+</main>
+
+<script src="/capture-queue.js"></script>
+<script>
+(function () {
+  "use strict";
+  var Q = window.NotingCapture;
+  var $ = function (id) { return document.getElementById(id); };
+  var form = $("form"), text = $("text"), save = $("save"), queue = $("queue"), empty = $("empty");
+  var statusEl = $("status"), title = $("title"), openBtn = $("open"), retry = $("retry");
+  var lastMessage = null; // { text, kind } do último envio
+
+  if (!Q) {
+    statusEl.textContent = "Não foi possível carregar a captura. Tente de novo com internet.";
+    return;
+  }
+
+  var TRASH = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4h6v3"/></svg>';
+
+  function time(ms) {
+    var d = new Date(ms);
+    return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+
+  function render() {
+    var items = Q.list();
+    queue.textContent = "";
+    items.forEach(function (c) {
+      var li = document.createElement("li");
+      var body = document.createElement("div");
+      body.className = "text";
+      body.textContent = c.text;
+      var meta = document.createElement("span");
+      meta.className = "meta";
+      meta.textContent = "Dia " + Q.shortDay(c.day) + " · " + time(c.createdAt);
+      body.appendChild(meta);
+      var del = document.createElement("button");
+      del.type = "button";
+      del.className = "icon-btn";
+      del.title = "Apagar da fila";
+      del.setAttribute("aria-label", "Apagar da fila: " + c.text.slice(0, 60));
+      del.innerHTML = TRASH;
+      del.addEventListener("click", function () { Q.remove(c.id); });
+      li.appendChild(body);
+      li.appendChild(del);
+      queue.appendChild(li);
+    });
+    $("queue-title").textContent = items.length ? "Na fila (" + items.length + ")" : "Na fila";
+    empty.hidden = items.length > 0;
+    renderStatus(items.length);
+  }
+
+  function renderStatus(count) {
+    var online = navigator.onLine;
+    title.textContent = online ? "Captura rápida" : "Sem conexão";
+    openBtn.hidden = !online;
+    retry.hidden = online && count === 0;
+    retry.textContent = online ? "Enviar agora" : "Tentar de novo";
+    statusEl.className = "status";
+    if (lastMessage) {
+      statusEl.className = "status " + lastMessage.kind;
+      statusEl.innerHTML = "";
+      statusEl.appendChild(document.createTextNode(lastMessage.text));
+      if (lastMessage.login) {
+        var a = document.createElement("a");
+        a.href = "/login";
+        a.textContent = "Entrar";
+        statusEl.appendChild(document.createTextNode(" "));
+        statusEl.appendChild(a);
+      }
+    } else if (!online) {
+      statusEl.textContent = "As capturas ficam guardadas neste aparelho.";
+    } else {
+      statusEl.textContent = count ? "Enviando a fila…" : "Conexão de volta.";
+    }
+  }
+
+  function syncNow() {
+    if (Q.list().length === 0) return;
+    Q.sync().then(function (r) {
+      if (r.status === "ok") {
+        var s = Q.summarize(r.sent);
+        lastMessage = s ? { text: s + ".", kind: "ok" } : null;
+      } else if (r.status === "unauthorized") {
+        lastMessage = { text: "Entre no Noting para enviar a fila.", kind: "warn", login: true };
+      } else if (r.status === "error") {
+        lastMessage = { text: "O servidor não aceitou agora. A fila continua guardada.", kind: "warn" };
+      } else if (r.status === "offline" && navigator.onLine) {
+        lastMessage = { text: "Ainda sem acesso ao servidor. A fila continua guardada.", kind: "warn" };
+      }
+      render();
+    });
+  }
+
+  text.addEventListener("input", function () {
+    save.disabled = text.value.trim() === "";
+  });
+  text.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      form.requestSubmit();
+    }
+  });
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var item = Q.add(text.value);
+    if (!item) return;
+    text.value = "";
+    save.disabled = true;
+    lastMessage = { text: "Guardada para o dia " + Q.shortDay(item.day) + ".", kind: "ok" };
+    text.focus();
+    if (navigator.onLine) syncNow();
+    render();
+  });
+  retry.addEventListener("click", function () {
+    // Com fila: tenta enviar. Sem fila: recarrega (abre o app se a rede voltou).
+    if (Q.list().length === 0) return location.reload();
+    lastMessage = null;
+    syncNow();
+    render();
+  });
+
+  window.addEventListener("online", function () { lastMessage = null; syncNow(); render(); });
+  window.addEventListener("offline", function () { lastMessage = null; render(); });
+  Q.onChange(render);
+  // navigator.onLine pode mentir (Wi-Fi sem internet): tenta de tempos em tempos.
+  setInterval(function () {
+    if (document.visibilityState === "visible" && Q.list().length) syncNow();
+  }, 30000);
+
+  $("hint").textContent = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘ Enter guarda" : "Ctrl Enter guarda";
+  if (matchMedia("(pointer: coarse)").matches) $("hint").textContent = "";
+  render();
+  syncNow();
+})();
+</script>
 </body>
 </html>

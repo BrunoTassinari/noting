@@ -1,13 +1,17 @@
 // Service worker do Noting. De propósito simples: NÃO guarda notas em cache
-// (elas sempre vêm do servidor). Só mostra uma página "sem conexão" quando
-// a navegação falha, e existe para o app ser instalável.
+// (elas sempre vêm do servidor). Quando a navegação falha, mostra a página
+// offline, que permite fazer capturas rápidas (fila em capture-queue.js,
+// enviada depois para /api/capture). Também existe para o app ser instalável.
+//
+// Mudou offline.html ou capture-queue.js? Suba a versão do CACHE para os
+// aparelhos baixarem a cópia nova.
 
-const CACHE = "noting-shell-v2";
+const CACHE = "noting-shell-v3";
 const OFFLINE_URL = "/offline.html";
-const PRECACHE = [OFFLINE_URL, "/icons/icon-192.png"];
+const PRECACHE = [OFFLINE_URL, "/capture-queue.js", "/icons/icon-192.png"];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)));
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PRECACHE.map((u) => new Request(u, { cache: "reload" })))));
   self.skipWaiting();
 });
 
