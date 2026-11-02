@@ -12,6 +12,14 @@
     "create-user": "tsx scripts/create-user.ts"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@codemirror/language": "^6.13.1",
+    "@codemirror/language-data": "^6.5.2",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.15",
+    "@lezer/highlight": "^1.2.5",
+    "@lezer/markdown": "^1.8.1",
     "better-auth": "^1.7.15",
     "drizzle-orm": "^0.45.4",
     "next": "16.4.3",

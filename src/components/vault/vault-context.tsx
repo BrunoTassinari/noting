@@ -44,7 +44,8 @@ type Vault = {
   /** Pasta "atual": a da nota aberta, ou a raiz. */
   currentFolder: string;
   creating: boolean;
-  createNote: (path: string) => void;
+  /** Cria e abre uma nota. Sem título → "Sem título", "Sem título 2"... */
+  createNote: (path: string, title?: string) => void;
   openNewFolder: () => void;
   openMove: (note: NoteMeta) => void;
   openDelete: (note: NoteMeta) => void;
@@ -116,9 +117,12 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
   // Criação otimista: a nota aparece na hora; o servidor grava em seguida e
   // navega para /n/<id>, onde a página real "adota" o editor já aberto.
   const createNote = useCallback(
-    (path: string) => {
+    (path: string, base?: string) => {
       const id = crypto.randomUUID();
-      const title = nextFreeTitle(allNotes.filter((n) => n.path === path).map((n) => n.title));
+      const title = nextFreeTitle(
+        allNotes.filter((n) => n.path === path).map((n) => n.title),
+        base,
+      );
       startOptimisticNote({ id, path, title, updatedAt: new Date().toISOString() });
       startCreate(async () => {
         const err = actionError(await createNoteAction({ id, path, title }));

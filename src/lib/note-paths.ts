@@ -126,3 +126,39 @@ export function nextFreeTitle(taken: Iterable<string>, base = DEFAULT_TITLE): st
     if (!set.has(`${base} ${n}`)) return `${base} ${n}`;
   }
 }
+
+/**
+ * Resolve o alvo de um [[link]] para uma nota, como o Obsidian:
+ *   [[Nota]], [[Pasta/Nota]], [[Nota#Seção]], [[Nota|apelido]].
+ * Sem caminho, prefere a nota da mesma pasta de quem linka.
+ */
+export function resolveWikilink<T extends NoteMeta>(
+  notes: T[],
+  rawTarget: string,
+  fromPath = "",
+): T | null {
+  const target = rawTarget.split("|")[0].split("#")[0].trim().replace(/\.md$/i, "");
+  if (!target) return null;
+  const lower = target.toLowerCase();
+
+  if (target.includes("/")) {
+    const path = normalizeFolder(parentFolder(target)).toLowerCase();
+    const title = folderName(target).toLowerCase();
+    return notes.find((n) => n.path.toLowerCase() === path && n.title.toLowerCase() === title) ?? null;
+  }
+
+  const matches = notes.filter((n) => n.title.toLowerCase() === lower);
+  if (matches.length <= 1) return matches[0] ?? null;
+  return (
+    matches.find((n) => n.title === target && n.path === fromPath) ??
+    matches.find((n) => n.path === fromPath) ??
+    matches.find((n) => n.title === target) ??
+    [...matches].sort((a, b) => a.path.length - b.path.length)[0]
+  );
+}
+
+/** Título usado para criar a nota de um [[link]] ainda inexistente. */
+export function wikilinkTitle(rawTarget: string): string {
+  const target = rawTarget.split("|")[0].split("#")[0].trim().replace(/\.md$/i, "");
+  return folderName(target);
+}

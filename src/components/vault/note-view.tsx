@@ -1,7 +1,9 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { renameNoteAction, saveNoteBodyAction } from "@/app/(vault)/actions";
 import {
   ArrowLeftIcon,
@@ -15,7 +17,13 @@ import {
   PencilIcon,
   TrashIcon,
 } from "@/components/icons";
-import { displayFolder, folderSegments, type NoteMeta } from "@/lib/note-paths";
+import {
+  displayFolder,
+  folderSegments,
+  type NoteMeta,
+  resolveWikilink,
+  wikilinkTitle,
+} from "@/lib/note-paths";
 import { Menu } from "./menu";
 import { whenCreated } from "./optimistic-note";
 import { actionError, useVault } from "./vault-context";
@@ -113,7 +121,7 @@ export function NoteView({
       </div>
 
       <div className="flex min-h-0 flex-1">
-        {/* Editor (CodeMirror entra na etapa 3) */}
+        {/* Editor */}
         <div className="min-w-0 flex-1 overflow-y-auto bg-surface px-5 pb-16 pt-5 md:px-10 md:pt-10">
           <div className="mx-auto max-w-[700px]">
             <TitleInput
@@ -123,7 +131,7 @@ export function NoteView({
               title={note.title}
               autoSelect={isNew}
             />
-            <BodyEditor value={body} onChange={setBody} />
+            <BodyEditor note={note} initialValue={note.body} onChange={setBody} />
           </div>
         </div>
 
@@ -223,7 +231,13 @@ function TitleInput({
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => {
-        if (e.key === "Enter") e.currentTarget.blur();
+        if (e.key === "Enter") {
+          // Enter no título: vai para o texto (como no Obsidian).
+          e.preventDefault();
+          const content = e.currentTarget.parentElement?.querySelector<HTMLElement>(".cm-content");
+          if (content) content.focus();
+          else e.currentTarget.blur();
+        }
         if (e.key === "Escape") {
           setDraft(title);
           requestAnimationFrame(() => (e.target as HTMLInputElement).blur());
@@ -234,27 +248,49 @@ function TitleInput({
   );
 }
 
-function BodyEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const ref = useRef<HTMLTextAreaElement>(null);
+// CodeMirror só roda no navegador. Enquanto carrega, mostra o texto puro.
+const MarkdownEditor = dynamic(() => import("@/components/editor/markdown-editor"), {
+  ssr: false,
+});
 
-  // Cresce com o conteúdo para a rolagem ser a do painel.
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
-  }, [value]);
+function BodyEditor({
+  note,
+  initialValue,
+  onChange,
+}: {
+  note: NoteMeta;
+  initialValue: string;
+  onChange: (v: string) => void;
+}) {
+  const { notes, createNote } = useVault();
+  const router = useRouter();
+  const [ready, setReady] = useState(false);
+
+  const openWikilink = (target: string) => {
+    const found = resolveWikilink(notes, target, note.path);
+    if (found) {
+      if (found.id !== note.id) router.push(`/n/${found.id}`);
+      return;
+    }
+    // Como no Obsidian: link para nota inexistente cria a nota (na raiz).
+    const title = wikilinkTitle(target);
+    if (title) createNote("", title);
+  };
 
   return (
-    <textarea
-      ref={ref}
-      aria-label="Conteúdo da nota"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder="Comece a escrever em Markdown…"
-      spellCheck
-      className="block min-h-[50vh] w-full resize-none overflow-hidden bg-transparent text-base leading-[1.7] text-[#d3d6dd] outline-none placeholder:text-muted"
-    />
+    <>
+      {!ready && (
+        <div className="min-h-[50vh] whitespace-pre-wrap break-words text-base leading-[1.7] text-[#d3d6dd]">
+          {initialValue}
+        </div>
+      )}
+      <MarkdownEditor
+        initialValue={initialValue}
+        onChange={onChange}
+        onOpenWikilink={openWikilink}
+        onReady={() => setReady(true)}
+      />
+    </>
   );
 }
 
