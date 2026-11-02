@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { signOut } from "@/app/login/actions";
 import {
@@ -16,6 +17,7 @@ import { Menu } from "./menu";
 import { prefetchNote } from "./note-cache";
 import { NoteLink } from "./note-link";
 import { Tree } from "./sidebar";
+import { BUJO_SCREENS } from "./bujo-screens";
 import { useVault } from "./vault-context";
 
 /** Tela "Notas" do celular (artboard Mobile · arquivos). */
@@ -73,6 +75,19 @@ export function MobileHome() {
           <SearchIcon size={18} />
           Buscar notas
         </button>
+      </div>
+
+      <div className="flex shrink-0 gap-2 px-4 pb-3">
+        {BUJO_SCREENS.map(({ href, label, Icon }) => (
+          <Link
+            key={href}
+            href={href}
+            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-rail text-sm text-text active:bg-card"
+          >
+            <Icon size={18} className="text-accent" />
+            {label}
+          </Link>
+        ))}
       </div>
 
       <div role="tablist" aria-label="Modo da lista" className="mx-4 mb-2 flex shrink-0 gap-1 rounded-xl bg-rail p-1">
