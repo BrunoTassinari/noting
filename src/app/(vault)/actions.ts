@@ -3,6 +3,9 @@
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/session";
+import { parseDay, periodicNote, type PeriodicKind } from "@/lib/bujo";
+import { isUuid } from "@/lib/note-paths";
+import { getOrCreateNote, pullFutureLogIntoMonth } from "@/server/bujo";
 import {
   createNote,
   deleteNote,
@@ -92,6 +95,37 @@ export async function saveNoteBodyAction(
     console.error(err);
     return { ok: false, error: "Algo deu errado. Tente de novo." };
   }
+}
+
+/**
+ * Abre a nota do dia/semana/mês de `isoDate` ("2026-11-02"), criando com o
+ * modelo se não existir. A data vem do relógio do usuário (navegador).
+ * `clientId`: id da nota otimista que o cliente já mostra. Se a nota já
+ * existia com outro id (criada em outro aparelho), devolve esse id em vez de
+ * redirecionar, para o cliente trocar de nota.
+ */
+export async function openPeriodicNoteAction(
+  kind: PeriodicKind,
+  isoDate: string,
+  clientId?: string,
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const d = typeof isoDate === "string" ? parseDay(isoDate) : null;
+  if (!d || (kind !== "day" && kind !== "week" && kind !== "month")) return { ok: false, error: "Data inválida." };
+  if (clientId !== undefined && !isUuid(clientId)) return { ok: false, error: "Id inválido." };
+  const user = await requireUser();
+  let id: string;
+  try {
+    const { ref, template } = periodicNote(kind, d);
+    const note = await getOrCreateNote(user.id, ref, template, clientId);
+    if (note.created && kind === "month") await pullFutureLogIntoMonth(user.id, note, d);
+    id = note.id;
+  } catch (err) {
+    console.error(err);
+    return { ok: false, error: "Não foi possível abrir a nota." };
+  }
+  revalidatePath("/", "layout");
+  if (clientId && id !== clientId) return { ok: true, id };
+  redirect(`/n/${id}`);
 }
 
 export async function renameNoteAction(id: string, title: string): Promise<ActionResult> {
