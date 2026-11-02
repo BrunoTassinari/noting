@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { signOut } from "@/app/login/actions";
 import {
   ChevronDownIcon,
@@ -12,13 +12,7 @@ import {
   PlusIcon,
   SearchIcon,
 } from "@/components/icons";
-import {
-  ancestorFolders,
-  buildTree,
-  displayFolder,
-  type FolderNode,
-  type NoteMeta,
-} from "@/lib/note-paths";
+import { ancestorFolders, buildTree, type FolderNode, type NoteMeta } from "@/lib/note-paths";
 import { expandFolders, toggleFolder, useExpandedFolders } from "./expanded-store";
 import { useVault } from "./vault-context";
 
@@ -26,8 +20,8 @@ const iconButton =
   "flex size-11 items-center justify-center rounded-md text-muted hover:bg-card hover:text-text md:size-7";
 
 export function Sidebar() {
-  const { notes, activeNote, currentFolder, creating, createNote, openNewFolder } = useVault();
-  const [filter, setFilter] = useState("");
+  const { notes, activeNote, currentFolder, creating, createNote, openNewFolder, openSearch } =
+    useVault();
 
   // Abre as pastas da nota ativa.
   useEffect(() => {
@@ -67,27 +61,19 @@ export function Sidebar() {
       </div>
 
       <div className="shrink-0 px-4 pb-3 md:px-2.5 md:pb-2.5">
-        <label className="flex h-11 items-center gap-2 rounded-xl border border-border bg-rail px-3.5 text-muted md:h-8 md:rounded-lg md:px-2.5">
+        <button
+          type="button"
+          onClick={openSearch}
+          className="flex h-11 w-full items-center gap-2 rounded-xl border border-border bg-rail px-3.5 text-left text-muted hover:border-[#3a3d47] md:h-8 md:rounded-lg md:px-2.5"
+        >
           <SearchIcon size={14} />
-          <input
-            aria-label="Filtrar notas por nome"
-            placeholder="Filtrar por nome"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            onKeyDown={(e) => e.key === "Escape" && setFilter("")}
-            className="min-w-0 flex-1 bg-transparent text-base text-text outline-none placeholder:text-muted md:text-[13px]"
-          />
-        </label>
+          <span className="flex-1 text-base md:text-[13px]">Buscar notas</span>
+          <kbd className="hidden font-mono text-[11px] md:inline">Ctrl K</kbd>
+        </button>
       </div>
 
       <nav aria-label="Notas" className="min-h-0 flex-1 overflow-y-auto px-2 pb-24 md:pb-4">
-        {notes.length === 0 ? (
-          <EmptyVault />
-        ) : filter.trim() ? (
-          <FilteredList notes={notes} query={filter} activeId={activeNote?.id} />
-        ) : (
-          <Tree notes={notes} activeId={activeNote?.id} />
-        )}
+        {notes.length === 0 ? <EmptyVault /> : <Tree notes={notes} activeId={activeNote?.id} />}
       </nav>
 
       {/* Botão flutuante no celular */}
@@ -199,38 +185,5 @@ function NoteRow({ note, indent, active }: { note: NoteMeta; indent: number; act
         <span className="truncate">{note.title}</span>
       </Link>
     </li>
-  );
-}
-
-function fold(s: string) {
-  return s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
-}
-
-function FilteredList({ notes, query, activeId }: { notes: NoteMeta[]; query: string; activeId?: string }) {
-  const q = fold(query.trim());
-  const matches = notes.filter((n) => fold(n.title).includes(q));
-
-  if (matches.length === 0) {
-    return <p className="px-3 py-6 text-center text-[13px] text-muted">Nada encontrado.</p>;
-  }
-
-  return (
-    <ul className="flex flex-col gap-px">
-      {matches.map((n) => (
-        <li key={n.id}>
-          <Link
-            href={`/n/${n.id}`}
-            prefetch={false}
-            aria-current={n.id === activeId ? "page" : undefined}
-            className={`flex flex-col rounded-md px-2 py-1.5 ${
-              n.id === activeId ? "bg-active" : "hover:bg-card"
-            }`}
-          >
-            <span className="truncate text-[15px] text-text md:text-[13px]">{n.title}</span>
-            <span className="truncate text-xs text-muted">{displayFolder(n.path)}</span>
-          </Link>
-        </li>
-      ))}
-    </ul>
   );
 }

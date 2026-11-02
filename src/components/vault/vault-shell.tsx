@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { signOut } from "@/app/login/actions";
-import { FolderIcon, LogoutIcon } from "@/components/icons";
+import { FolderIcon, LogoutIcon, SearchIcon } from "@/components/icons";
 import type { NoteMeta } from "@/lib/note-paths";
 import { Sidebar } from "./sidebar";
 import { NoteView } from "./note-view";
@@ -18,7 +18,7 @@ export function VaultShell({ notes, children }: { notes: NoteMeta[]; children: R
 }
 
 function Layout({ children }: { children: ReactNode }) {
-  const { optimisticNote } = useVault();
+  const { optimisticNote, openSearch } = useVault();
   const routeId = useParams<{ id?: string }>().id;
   const noteOpen = Boolean(routeId || optimisticNote);
 
@@ -33,6 +33,15 @@ function Layout({ children }: { children: ReactNode }) {
           <FolderIcon size={18} />
           <span className="sr-only">Arquivos</span>
         </span>
+        <button
+          type="button"
+          aria-label="Buscar (Ctrl K)"
+          title="Buscar (Ctrl K)"
+          onClick={openSearch}
+          className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-card hover:text-text"
+        >
+          <SearchIcon size={18} />
+        </button>
         <div className="flex-1" />
         <form action={signOut}>
           <button

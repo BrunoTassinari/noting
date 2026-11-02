@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { renameNoteAction, saveNoteBodyAction } from "@/app/(vault)/actions";
 import {
   ArrowLeftIcon,
@@ -25,7 +25,10 @@ import {
   wikilinkTitle,
 } from "@/lib/note-paths";
 import { sameWikilinkTargets, type Backlink } from "@/lib/wikilinks";
+import { parseHeadings } from "@/lib/outline";
+import type { EditorApi } from "@/components/editor/markdown-editor";
 import { Backlinks } from "./backlinks";
+import { Outline } from "./outline";
 import { Menu } from "./menu";
 import { whenCreated } from "./optimistic-note";
 import { actionError, useVault } from "./vault-context";
@@ -46,6 +49,10 @@ export function NoteView({
   const { openMove, openDelete } = useVault();
   const titleRef = useRef<HTMLInputElement>(null);
   const { body, setBody, status, flush } = useAutosave(note.id, note.body);
+  const editorApi = useRef<EditorApi | null>(null);
+  const [cursorLine, setCursorLine] = useState<number | null>(null);
+  const headings = useMemo(() => parseHeadings(body), [body]);
+  const [panels, setPanels] = useState({ backlinks: true, outline: true });
 
   const menuItems = [
     { label: "Renomear", icon: <PencilIcon size={15} />, onSelect: () => titleRef.current?.focus() },
@@ -133,30 +140,56 @@ export function NoteView({
               title={note.title}
               autoSelect={isNew}
             />
-            <BodyEditor note={note} initialValue={note.body} onChange={setBody} />
+            <BodyEditor
+              note={note}
+              initialValue={note.body}
+              onChange={setBody}
+              onCursorLine={setCursorLine}
+              onReady={(api) => (editorApi.current = api)}
+            />
           </div>
         </div>
 
         {/* Painel direito (desktop largo) */}
         <aside className="hidden w-72 shrink-0 flex-col border-l border-border bg-panel lg:flex">
-          <div className="flex h-10 items-center gap-1 px-2.5">
-            <span className="flex size-7 items-center justify-center rounded-md bg-active text-accent">
-              <LinkIcon size={16} />
-            </span>
-            <span className="flex size-7 items-center justify-center rounded-md text-muted">
-              <ListIcon size={16} />
-            </span>
+          <div className="flex h-10 shrink-0 items-center gap-1 px-2.5">
+            {(
+              [
+                ["backlinks", "Backlinks", <LinkIcon key="l" size={16} />],
+                ["outline", "Tópicos", <ListIcon key="o" size={16} />],
+              ] as const
+            ).map(([key, label, icon]) => (
+              <button
+                key={key}
+                type="button"
+                aria-label={`Mostrar ${label}`}
+                title={label}
+                aria-pressed={panels[key]}
+                onClick={() => setPanels((p) => ({ ...p, [key]: !p[key] }))}
+                className={`flex size-7 items-center justify-center rounded-md ${
+                  panels[key] ? "bg-active text-accent" : "text-muted hover:bg-card hover:text-text"
+                }`}
+              >
+                {icon}
+              </button>
+            ))}
           </div>
-          <div className="px-3.5 pb-4 pt-2">
-            <Backlinks items={note.backlinks ?? []} />
-            <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-[0.04em] text-muted">Tópicos</h2>
-            <p className="text-xs leading-normal text-muted">Os títulos da nota vão aparecer aqui.</p>
+          <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-3.5 pb-4 pt-2">
+            {panels.backlinks && <Backlinks items={note.backlinks ?? []} />}
+            {panels.outline && (
+              <Outline
+                headings={headings}
+                cursorLine={cursorLine}
+                onSelect={(line) => editorApi.current?.goToLine(line)}
+              />
+            )}
           </div>
         </aside>
       </div>
 
       {/* Barra de status (desktop) */}
       <div className="hidden h-7 shrink-0 items-center gap-4 border-t border-border bg-rail px-4 text-xs text-muted md:flex">
+        <span>Ctrl K para buscar</span>
         <div className="flex-1" />
         <SaveIndicator status={status} />
         <span>
@@ -256,10 +289,14 @@ function BodyEditor({
   note,
   initialValue,
   onChange,
+  onCursorLine,
+  onReady,
 }: {
   note: NoteMeta;
   initialValue: string;
   onChange: (v: string) => void;
+  onCursorLine: (line: number) => void;
+  onReady: (api: EditorApi) => void;
 }) {
   const { notes, createNote } = useVault();
   const router = useRouter();
@@ -288,7 +325,11 @@ function BodyEditor({
         onChange={onChange}
         onOpenWikilink={openWikilink}
         linkTargets={{ notes, selfId: note.id }}
-        onReady={() => setReady(true)}
+        onCursorLine={onCursorLine}
+        onReady={(api) => {
+          setReady(true);
+          onReady(api);
+        }}
       />
     </>
   );

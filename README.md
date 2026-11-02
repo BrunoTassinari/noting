@@ -46,6 +46,16 @@ navegador do PC e no celular (PWA).
    DATABASE_URL="postgresql://..." npm run create-user -- voce@exemplo.com "senha"
    ```
 
+## Comandos úteis
+
+| Comando | Para quê |
+|---|---|
+| `npm run db:migrate` | Aplica as migrations pendentes (rode depois de atualizar o app) |
+| `npm run create-user -- email "senha" "Nome"` | Cria usuário ou redefine a senha |
+| `npm run reindex-links` | Reconstrói a tabela de links/backlinks a partir dos `[[links]]` |
+
+Para rodar contra o banco de produção, prefixe com `DATABASE_URL="postgresql://..."`.
+
 ## Banco de dados
 
 O schema fica em `src/db/schema.ts` e as migrations SQL em `drizzle/`.
@@ -57,6 +67,9 @@ Depois de mudar o schema, rode `npm run db:generate` e depois
   - `title` = nome da nota, único por pasta
   - `body` = Markdown puro (arquivo exportado: `path/title.md`)
 - `links(from_id, to_id, user_id)`: reconstruída a partir dos `[[links]]`.
+- `notes.search_text`: título + corpo sem acentos (coluna gerada), usada
+  pela busca Ctrl/Cmd+K. Requer as extensões `unaccent` e `pg_trgm`
+  (criadas pela migration; o Neon suporta as duas).
 - `user`, `session`, `account`, `verification`: tabelas do Better Auth.
 
 Quem garante o isolamento entre usuários é o servidor: toda consulta filtra

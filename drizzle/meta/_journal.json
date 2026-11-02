@@ -8,6 +8,20 @@
       "when": 1793580854450,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793587159945,
+      "tag": "0001_drop_tsvector",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793587172110,
+      "tag": "0002_search_unaccent",
+      "breakpoints": true
     }
   ]
 }

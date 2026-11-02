@@ -25,8 +25,15 @@ export type MarkdownEditorProps = {
   onOpenWikilink: (target: string) => void;
   /** Notas oferecidas no autocomplete de [[ (selfId = a nota aberta). */
   linkTargets: { notes: NoteMeta[]; selfId?: string };
-  /** Chamado quando o editor terminou de montar. */
-  onReady?: () => void;
+  /** Linha (1…) onde está o cursor, a cada mudança. */
+  onCursorLine?: (line: number) => void;
+  /** Chamado quando o editor terminou de montar, com comandos para o pai. */
+  onReady?: (api: EditorApi) => void;
+};
+
+export type EditorApi = {
+  /** Move o cursor para o início da linha e rola até ela. */
+  goToLine: (line: number) => void;
 };
 
 /**
@@ -38,13 +45,14 @@ export default function MarkdownEditor({
   onChange,
   onOpenWikilink,
   linkTargets,
+  onCursorLine,
   onReady,
 }: MarkdownEditorProps) {
   const host = useRef<HTMLDivElement>(null);
-  const callbacks = useRef({ onChange, onOpenWikilink, linkTargets });
+  const callbacks = useRef({ onChange, onOpenWikilink, linkTargets, onCursorLine });
 
   useEffect(() => {
-    callbacks.current = { onChange, onOpenWikilink, linkTargets };
+    callbacks.current = { onChange, onOpenWikilink, linkTargets, onCursorLine };
   });
 
   useEffect(() => {
@@ -96,12 +104,24 @@ export default function MarkdownEditor({
           openLinks,
           EditorView.updateListener.of((u) => {
             if (u.docChanged) callbacks.current.onChange(u.state.doc.toString());
+            if (u.docChanged || u.selectionSet) {
+              callbacks.current.onCursorLine?.(u.state.doc.lineAt(u.state.selection.main.head).number);
+            }
           }),
         ],
       }),
     });
 
-    onReady?.();
+    onReady?.({
+      goToLine(line) {
+        const target = view.state.doc.line(Math.min(Math.max(1, line), view.state.doc.lines));
+        view.dispatch({
+          selection: { anchor: target.to },
+          effects: EditorView.scrollIntoView(target.from, { y: "start", yMargin: 24 }),
+        });
+        view.focus();
+      },
+    });
     return () => view.destroy();
     // Não controlado: recria só se o componente remontar (troca de nota).
     // eslint-disable-next-line react-hooks/exhaustive-deps

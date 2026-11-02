@@ -2,7 +2,6 @@ import { sql, type SQL } from "drizzle-orm";
 import {
   boolean,
   check,
-  customType,
   index,
   pgTable,
   primaryKey,
@@ -99,10 +98,6 @@ export const verification = pgTable(
 //   Arquivo exportado = path/title.md. A árvore da barra lateral sai de path.
 // ---------------------------------------------------------------------------
 
-const tsvector = customType<{ data: string }>({
-  dataType: () => "tsvector",
-});
-
 export const notes = pgTable(
   "notes",
   {
@@ -118,17 +113,17 @@ export const notes = pgTable(
       .notNull()
       .defaultNow()
       .$onUpdate(() => new Date()),
-    // Busca por título (peso A) e conteúdo (peso B).
-    search: tsvector("search").generatedAlwaysAs(
-      (): SQL =>
-        sql`setweight(to_tsvector('simple', coalesce(${notes.title}, '')), 'A') || setweight(to_tsvector('simple', coalesce(${notes.body}, '')), 'B')`,
+    // Título + corpo em minúsculas e sem acentos, para a busca (Ctrl+K).
+    // f_unaccent é criada na migration 0001 (wrapper imutável do unaccent).
+    searchText: text("search_text").generatedAlwaysAs(
+      (): SQL => sql`f_unaccent(lower(${notes.title} || chr(10) || ${notes.body}))`,
     ),
   },
   (t) => [
     unique("notes_unique_title_per_folder").on(t.userId, t.path, t.title),
     index("notes_user_updated_idx").on(t.userId, t.updatedAt.desc()),
     index("notes_user_path_idx").on(t.userId, t.path),
-    index("notes_search_idx").using("gin", t.search),
+    index("notes_search_text_trgm_idx").using("gin", sql`${t.searchText} gin_trgm_ops`),
     check(
       "notes_title_valid",
       sql`length(btrim(${t.title})) > 0 and position('/' in ${t.title}) = 0`,

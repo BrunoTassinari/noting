@@ -26,6 +26,7 @@ import {
   type NoteMeta,
 } from "@/lib/note-paths";
 import { ConfirmDialog, PromptDialog } from "./dialogs";
+import { SearchPalette } from "./search-palette";
 import {
   clearOptimisticNote,
   failOptimisticNote,
@@ -47,6 +48,7 @@ type Vault = {
   /** Cria e abre uma nota. Sem título → "Sem título", "Sem título 2"... */
   createNote: (path: string, title?: string) => void;
   openNewFolder: () => void;
+  openSearch: () => void;
   openMove: (note: NoteMeta) => void;
   openDelete: (note: NoteMeta) => void;
   showError: (message: string) => void;
@@ -113,6 +115,19 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
     toastTimer.current = setTimeout(() => setToast(null), 5000);
   }, []);
 
+  // Busca: Ctrl/Cmd+K de qualquer lugar (inclusive de dentro do editor).
+  const [searchOpen, setSearchOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey, { capture: true });
+    return () => window.removeEventListener("keydown", onKey, { capture: true });
+  }, []);
+
   const [creating, startCreate] = useTransition();
   // Criação otimista: a nota aparece na hora; o servidor grava em seguida e
   // navega para /n/<id>, onde a página real "adota" o editor já aberto.
@@ -144,6 +159,7 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
     creating,
     createNote,
     openNewFolder: () => setDialog({ kind: "folder", at: activeId }),
+    openSearch: () => setSearchOpen(true),
     openMove: (note) => setDialog({ kind: "move", note, at: activeId }),
     openDelete: (note) => setDialog({ kind: "delete", note, at: activeId }),
     showError,
@@ -152,6 +168,13 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
   return (
     <VaultContext value={value}>
       {children}
+
+      <SearchPalette
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        notes={allNotes}
+        onCreate={(title) => createNote(currentFolder, title)}
+      />
 
       <PromptDialog
         open={dialog.kind === "folder"}
