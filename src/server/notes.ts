@@ -56,13 +56,31 @@ function unwrap<T>(r: { value: T } | { error: string }): T {
   return r.value;
 }
 
+/**
+ * Lista de notas do layout (árvore, busca por nome, links). Sem o corpo nem
+ * resumo: vai inteira para o navegador a cada carregamento e refresh.
+ */
 export async function listNotes(userId: string): Promise<NoteMeta[]> {
   const rows = await db
-    .select({ ...metaColumns, head: sql<string>`left(${notes.body}, 600)` })
+    .select(metaColumns)
     .from(notes)
     .where(eq(notes.userId, userId))
     .orderBy(asc(notes.path), asc(notes.title));
-  return rows.map((r) => ({ ...toMeta(r), excerpt: makeExcerpt(r.head) }));
+  return rows.map(toMeta);
+}
+
+/** Resumo do começo de cada nota (lista "Recentes" do celular). */
+export async function listExcerpts(userId: string): Promise<Record<string, string>> {
+  const rows = await db
+    .select({ id: notes.id, head: sql<string>`left(${notes.body}, 600)` })
+    .from(notes)
+    .where(eq(notes.userId, userId));
+  const out: Record<string, string> = {};
+  for (const r of rows) {
+    const excerpt = makeExcerpt(r.head);
+    if (excerpt) out[r.id] = excerpt;
+  }
+  return out;
 }
 
 export async function getNote(userId: string, id: string): Promise<NoteFull | null> {
