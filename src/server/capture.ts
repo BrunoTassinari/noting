@@ -5,6 +5,7 @@ import { captures, notes } from "@/db/schema";
 import { dailyRef, dailyTemplate, parseDay } from "@/lib/bujo";
 import { appendCaptures, type CaptureInput } from "@/lib/capture";
 import { getOrCreateNote } from "./bujo";
+import { sameWikilinkTargets } from "@/lib/wikilinks";
 import { rebuildLinks } from "./links";
 
 export type CaptureResult = { id: string; day: string; status: "added" | "duplicate" };
@@ -41,11 +42,14 @@ export async function applyCaptures(userId: string, input: CaptureInput[]): Prom
           .where(and(eq(notes.userId, userId), eq(notes.id, note.id)))
           .for("update");
         if (!row) throw new Error("Nota diária sumiu durante a captura.");
+        const body = appendCaptures(row.body, texts);
         await tx
           .update(notes)
-          .set({ body: appendCaptures(row.body, texts) })
+          .set({ body })
           .where(and(eq(notes.userId, userId), eq(notes.id, note.id)));
-        await rebuildLinks(tx, userId, [note.id]);
+        if (!sameWikilinkTargets(row.body, body)) {
+          await rebuildLinks(tx, userId, [note.id], [{ id: note.id, path: dailyRef(d).path, body }]);
+        }
       }
       return fresh;
     });
