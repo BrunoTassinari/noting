@@ -11,6 +11,8 @@ import {
   getLists,
   listSignals,
   type ListsPayload,
+  removeListItem,
+  studyNoteFor,
   type SignalSource,
 } from "@/server/lists";
 import { NoteError } from "@/server/notes";
@@ -119,6 +121,25 @@ export async function addListItemAction(
     if (parseItem(line)?.state !== state) throw new NoteError("Título inválido.");
     await addItem(userId, noteId, line);
     return { data: await getLists(userId, noteId) };
+  });
+}
+
+/** Exclui o item da lista (com subitens). */
+export async function deleteListItemAction(ref: LineRef): Promise<Result<{ data: ListsPayload }>> {
+  return run(async (userId) => {
+    const r = refOf(ref);
+    await removeListItem(userId, r.noteId, r.line, r.raw);
+    return { data: await getLists(userId, r.noteId) };
+  });
+}
+
+/** Abre (ou cria) a nota de estudo do item. Devolve o id da nota. */
+export async function studyNoteAction(listId: string, itemTitle: string): Promise<Result<{ id: string }>> {
+  return run(async (userId) => {
+    if (!isUuid(String(listId))) throw new NoteError("Lista não encontrada.");
+    const t = shortText(itemTitle, "Título");
+    if (!t) throw new NoteError("Item sem nome.");
+    return { id: await studyNoteFor(userId, listId, t) };
   });
 }
 

@@ -19,7 +19,8 @@ import { displayFolder, type NoteMeta } from "@/lib/note-paths";
 import { relativeTime } from "@/lib/relative-time";
 import { NEXT_THEME, setThemePref, THEME_LABEL, useThemePref } from "@/components/theme";
 import { Menu } from "./menu";
-import { BacklogQuick, ListsQuick } from "./sidebar-quick";
+import { ListsPanel } from "./lists-panel";
+import { BacklogQuick } from "./sidebar-quick";
 import { ThemeIcon } from "./theme-button";
 import { prefetchNote } from "./note-cache";
 import { NoteLink } from "./note-link";
@@ -162,7 +163,7 @@ export function MobileHome() {
         ) : tab === "backlog" ? (
           <BacklogQuick />
         ) : tab === "lists" ? (
-          <ListsQuick />
+          <ListsPanel />
         ) : tab === "recent" ? (
           <ul>
             {recent.map((n) => (

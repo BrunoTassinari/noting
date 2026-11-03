@@ -407,3 +407,12 @@ export function CollapseIcon(props: IconProps) {
     </Base>
   );
 }
+
+export function BookIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z" />
+      <path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19M9 7h6" />
+    </Base>
+  );
+}

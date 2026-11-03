@@ -145,3 +145,57 @@ export async function listSignals(userId: string): Promise<SignalSource[]> {
   // Mais recentes primeiro (datas "2026-11-02" e ISO completas se comparam bem).
   return out.sort((a, b) => b.date.localeCompare(a.date) || a.title.localeCompare(b.title));
 }
+
+/** Remove o item (e seus subitens indentados) se a linha ainda for `raw`. */
+export async function removeListItem(userId: string, noteId: string, line: number, raw: string): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({ body: notes.body })
+      .from(notes)
+      .where(and(eq(notes.userId, userId), eq(notes.id, noteId), inListsFolder))
+      .for("update");
+    if (!row) throw new NoteError("Lista não encontrada.");
+    const lines = row.body.split("\n");
+    if (lines[line] !== raw) throw new NoteError(CONFLICT);
+    const indent = /^\s*/.exec(raw)![0].length;
+    let end = line + 1;
+    while (end < lines.length && lines[end].trim() !== "" && /^\s*/.exec(lines[end])![0].length > indent) end++;
+    lines.splice(line, end - line);
+    await tx
+      .update(notes)
+      .set({ body: lines.join("\n") })
+      .where(and(eq(notes.userId, userId), eq(notes.id, noteId)));
+    await rebuildLinks(tx, userId, [noteId]);
+  });
+}
+
+/** Pasta das notas de estudo de uma lista: "Conhecimento/<Lista>". */
+export const studyFolder = (listName: string) => `Conhecimento/${listName.replace(/\//g, " - ")}`;
+
+/**
+ * Nota de estudo de um item: se já existe uma nota com o mesmo nome
+ * (qualquer pasta), abre essa; senão cria em "Conhecimento/<Lista>".
+ */
+export async function studyNoteFor(userId: string, listId: string, itemTitle: string): Promise<string> {
+  const [list] = await db
+    .select({ path: notes.path, title: notes.title })
+    .from(notes)
+    .where(and(eq(notes.userId, userId), eq(notes.id, listId), inListsFolder));
+  if (!list) throw new NoteError("Lista não encontrada.");
+  const title = itemTitle.replace(/\//g, "-").replace(/\s+/g, " ").trim().slice(0, 200);
+  if (!title) throw new NoteError("Item sem nome.");
+  const [existing] = await db
+    .select({ id: notes.id })
+    .from(notes)
+    .where(and(eq(notes.userId, userId), eq(notes.title, title)))
+    .limit(1);
+  if (existing) return existing.id;
+  const listName = nameOf(list);
+  const { getOrCreateNote } = await import("./bujo");
+  const note = await getOrCreateNote(
+    userId,
+    { path: studyFolder(listName), title },
+    `# ${title}\n\nLista: [[${list.path}/${list.title}|${listName}]]\n\n## Notas\n\n`,
+  );
+  return note.id;
+}

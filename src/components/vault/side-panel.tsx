@@ -40,7 +40,8 @@ import { AppLink, NoteLink, wantsNewTab } from "./note-link";
 import { Outline } from "./outline";
 import { Highlight } from "./search-palette";
 import { FilesPanel } from "./sidebar";
-import { BacklogQuick, ListsQuick, useReloadOnFocus } from "./sidebar-quick";
+import { ListsPanel as ListsPanelView } from "./lists-panel";
+import { BacklogQuick, useReloadOnFocus } from "./sidebar-quick";
 import { useVault } from "./vault-context";
 
 type IconType = ComponentType<{ size?: number; className?: string }>;
@@ -58,7 +59,7 @@ export const PANELS: Record<PanelKey, { label: string; Icon: IconType; Body: Com
 function ListsPanel() {
   return (
     <Scroll title="Listas">
-      <ListsQuick />
+      <ListsPanelView />
     </Scroll>
   );
 }
