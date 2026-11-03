@@ -2,25 +2,31 @@ import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
 
-// Cores e medidas do design (artefato "Notas v1").
+// Cores e medidas baseadas no tema Firelight do Obsidian (tokens em
+// globals.css). Cantos: 3px (tags, checkbox, código inline), 5px (controles),
+// 8px (cartões e blocos).
 const c = {
   text: "var(--color-body)",
   strong: "var(--color-text-strong)",
+  soft: "var(--color-text-soft)",
   muted: "var(--color-muted)",
+  faint: "var(--color-faint)",
   accent: "var(--color-accent)",
   border: "var(--color-border)",
   code: "var(--color-code)",
   codeText: "var(--color-code-text)",
-  quoteBar: "var(--color-border-strong)",
+  quoteBar: "var(--color-quote-bar)",
+  quoteBg: "var(--color-quote-bg)",
   quoteText: "var(--color-quote)",
-  box: "var(--color-faint)",
+  box: "var(--color-checkbox)",
+  link: "var(--color-link)",
 };
 
 export const editorTheme = EditorView.theme(
   {
     "&": { backgroundColor: "transparent", color: c.text },
     "&.cm-focused": { outline: "none" },
-    ".cm-scroller": { fontFamily: "var(--font-sans)", lineHeight: "1.7", overflow: "visible" },
+    ".cm-scroller": { fontFamily: "var(--font-sans)", lineHeight: "1.68", overflow: "visible" },
     ".cm-content": {
       padding: "0 0 40vh",
       fontSize: "16px",
@@ -30,43 +36,47 @@ export const editorTheme = EditorView.theme(
     ".cm-line": { padding: "0" },
     ".cm-cursor, .cm-dropCursor": { borderLeft: `2px solid ${c.accent}` },
     "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": {
-      backgroundColor: "rgba(127, 209, 196, 0.22) !important",
+      backgroundColor: "var(--color-selection) !important",
     },
     ".cm-placeholder": { color: c.muted },
 
     // Títulos
-    ".cm-h": { color: c.strong, fontWeight: "600", lineHeight: "1.3" },
-    ".cm-h1": { fontSize: "28px", paddingTop: "12px", paddingBottom: "4px" },
-    ".cm-h2": { fontSize: "24px", paddingTop: "10px", paddingBottom: "2px" },
-    ".cm-h3": { fontSize: "20px", paddingTop: "8px" },
-    ".cm-h4, .cm-h5, .cm-h6": { fontSize: "17px", paddingTop: "6px" },
+    // Títulos (escala e pesos do Firelight; cor por nível, modo "Firelight").
+    ".cm-h": { color: c.strong, lineHeight: "1.3" },
+    ".cm-h1": { color: "var(--color-h1)", fontSize: "1.9em", fontWeight: "700", paddingTop: "12px", paddingBottom: "4px" },
+    ".cm-h2": { color: "var(--color-h2)", fontSize: "1.55em", fontWeight: "680", paddingTop: "10px", paddingBottom: "2px" },
+    ".cm-h3": { color: "var(--color-h3)", fontSize: "1.3em", fontWeight: "650", paddingTop: "8px" },
+    ".cm-h4": { color: "var(--color-h4)", fontSize: "1.15em", fontWeight: "650", paddingTop: "6px" },
+    ".cm-h5": { color: "var(--color-h5)", fontSize: "1.05em", fontWeight: "620", paddingTop: "6px" },
+    ".cm-h6": { color: "var(--color-h6)", fontSize: "1em", fontWeight: "620", paddingTop: "6px" },
 
     // Inline
-    ".cm-strong": { fontWeight: "600", color: c.strong },
-    ".cm-em": { fontStyle: "italic" },
+    ".cm-strong": { fontWeight: "700", color: c.strong },
+    ".cm-em": { fontStyle: "italic", color: c.soft },
     ".cm-strike": { textDecoration: "line-through", color: c.muted },
     ".cm-inline-code": {
       fontFamily: "var(--font-mono)",
-      fontSize: "0.86em",
+      fontSize: "0.84em",
       backgroundColor: c.code,
-      border: `1px solid ${c.border}`,
-      borderRadius: "4px",
-      padding: "1px 4px",
+      borderRadius: "3px",
+      padding: "1px 5px",
       color: c.codeText,
     },
     ".cm-link, .cm-wikilink": {
-      color: c.accent,
+      color: c.link,
       cursor: "pointer",
       textDecoration: "underline",
-      textDecorationColor: "rgba(127, 209, 196, 0.35)",
+      textDecorationColor: "color-mix(in oklch, var(--color-link) 40%, transparent)",
       textUnderlineOffset: "3px",
     },
-    ".cm-wikilink-raw, .cm-link-raw": { color: c.accent },
+    ".cm-link:hover, .cm-wikilink:hover": { textDecorationColor: c.link },
+    ".cm-wikilink-raw, .cm-link-raw": { color: c.link },
     ".cm-tag": {
-      color: c.accent,
-      backgroundColor: "rgba(127, 209, 196, 0.14)",
-      borderRadius: "999px",
-      padding: "1px 8px",
+      color: "var(--color-tag-text)",
+      backgroundColor: "var(--color-tag-bg)",
+      border: `1px solid ${c.border}`,
+      borderRadius: "3px",
+      padding: "0 6px",
       fontSize: "0.85em",
     },
 
@@ -77,17 +87,13 @@ export const editorTheme = EditorView.theme(
       backgroundColor: c.code,
       color: c.codeText,
       padding: "0 16px !important",
-      borderLeft: `1px solid ${c.border}`,
-      borderRight: `1px solid ${c.border}`,
     },
     ".cm-codeblock-first": {
-      borderTop: `1px solid ${c.border}`,
       borderTopLeftRadius: "8px",
       borderTopRightRadius: "8px",
       paddingTop: "8px !important",
     },
     ".cm-codeblock-last": {
-      borderBottom: `1px solid ${c.border}`,
       borderBottomLeftRadius: "8px",
       borderBottomRightRadius: "8px",
       paddingBottom: "8px !important",
@@ -98,10 +104,11 @@ export const editorTheme = EditorView.theme(
 
     // Citação
     ".cm-quote": {
-      borderLeft: `3px solid ${c.quoteBar}`,
+      borderLeft: `2px solid ${c.quoteBar}`,
+      backgroundColor: c.quoteBg,
       paddingLeft: "16px !important",
+      paddingRight: "12px !important",
       color: c.quoteText,
-      fontStyle: "italic",
     },
 
     // Listas e tarefas
@@ -115,18 +122,34 @@ export const editorTheme = EditorView.theme(
       height: "16px",
       marginRight: "8px",
       verticalAlign: "-2px",
-      borderRadius: "4px",
+      borderRadius: "3px",
       border: `1.5px solid ${c.box}`,
       cursor: "pointer",
       boxSizing: "border-box",
     },
-    ".cm-task-box-done": { backgroundColor: c.accent, borderColor: c.accent, color: "var(--color-bg)" },
-    ".cm-task-box-moved": { color: c.muted, borderColor: c.muted },
-    ".cm-task-box-cancelled": { color: c.muted, borderColor: c.muted },
-    ".cm-task-box-event": { borderRadius: "50%", borderColor: c.accent, cursor: "text" },
-    ".cm-task-box-doing": { color: c.accent, borderColor: c.accent },
+    ".cm-task-box:hover": { borderColor: c.accent },
+    // Estados com a matiz do Firelight: [/] damasco, [>] centáurea, [-] apagado.
+    ".cm-task-box-done, .cm-task-box-done:hover": {
+      backgroundColor: c.accent,
+      borderColor: c.accent,
+      color: "var(--color-accent-ink)",
+    },
+    ".cm-task-box-moved, .cm-task-box-moved:hover": {
+      color: "var(--color-task-moved)",
+      borderColor: "var(--color-task-moved)",
+    },
+    ".cm-task-box-cancelled, .cm-task-box-cancelled:hover": { color: c.faint, borderColor: c.faint },
+    ".cm-task-box-event, .cm-task-box-event:hover": {
+      borderRadius: "50%",
+      borderColor: "var(--color-task-event)",
+      cursor: "text",
+    },
+    ".cm-task-box-doing, .cm-task-box-doing:hover": {
+      color: "var(--color-task-doing)",
+      borderColor: "var(--color-task-doing)",
+    },
     ".cm-task-box-moved, .cm-task-box-cancelled, .cm-task-box-doing": { cursor: "text" },
-    ".cm-task-done": { color: c.muted, textDecoration: "line-through" },
+    ".cm-task-done": { color: c.faint, textDecoration: "line-through" },
     ".cm-task-moved": { color: c.muted },
 
     // Frontmatter (YAML cru, ao editar) e painéis do Bullet Journal
@@ -135,7 +158,7 @@ export const editorTheme = EditorView.theme(
       margin: "4px 0 12px",
       padding: "12px 14px",
       border: `1px solid ${c.border}`,
-      borderRadius: "10px",
+      borderRadius: "8px",
       backgroundColor: "var(--color-panel)",
       fontSize: "13px",
       lineHeight: "1.4",
@@ -145,7 +168,13 @@ export const editorTheme = EditorView.theme(
     ".cm-props-row": { display: "flex", gap: "12px", alignItems: "baseline" },
     ".cm-props-key": { flex: "0 0 110px", color: c.muted, overflow: "hidden", textOverflow: "ellipsis" },
     ".cm-props-value": { display: "flex", flexWrap: "wrap", gap: "4px", color: "var(--color-text)", minWidth: "0" },
-    ".cm-props-pill": { padding: "1px 8px", borderRadius: "999px", backgroundColor: "var(--color-active)" },
+    ".cm-props-pill": {
+      padding: "0 6px",
+      borderRadius: "3px",
+      backgroundColor: "var(--color-tag-bg)",
+      border: `1px solid ${c.border}`,
+      color: "var(--color-tag-text)",
+    },
     ".cm-props-empty": { color: c.muted },
     ".cm-bujo-dia": { display: "flex", flexDirection: "column", gap: "10px", cursor: "default" },
     ".cm-bujo-row": { display: "flex", gap: "12px", alignItems: "flex-start", flexWrap: "wrap" },
@@ -154,7 +183,7 @@ export const editorTheme = EditorView.theme(
     ".cm-bujo-chip": {
       minHeight: "30px",
       padding: "0 10px",
-      borderRadius: "8px",
+      borderRadius: "5px",
       border: `1px solid ${c.border}`,
       backgroundColor: "transparent",
       color: "var(--color-text-soft)",
@@ -173,7 +202,7 @@ export const editorTheme = EditorView.theme(
       width: "64px",
       height: "30px",
       padding: "0 8px",
-      borderRadius: "8px",
+      borderRadius: "5px",
       border: `1px solid ${c.border}`,
       backgroundColor: "var(--color-bg)",
       color: "var(--color-text)",
@@ -327,11 +356,11 @@ export const editorTheme = EditorView.theme(
 
     // Autocomplete de [[links]]
     ".cm-tooltip.cm-tooltip-autocomplete": {
-      backgroundColor: "var(--color-card)",
-      border: `1px solid ${c.border}`,
+      backgroundColor: "var(--color-panel)",
+      border: "1px solid var(--color-border-strong)",
       borderRadius: "8px",
       padding: "4px",
-      boxShadow: "0 12px 32px rgba(0, 0, 0, 0.45)",
+      boxShadow: "0 12px 32px rgba(0, 0, 0, 0.28)",
     },
     ".cm-tooltip.cm-tooltip-autocomplete > ul": {
       fontFamily: "var(--font-sans) !important",
@@ -344,7 +373,7 @@ export const editorTheme = EditorView.theme(
       alignItems: "baseline",
       gap: "8px",
       padding: "6px 10px !important",
-      borderRadius: "6px",
+      borderRadius: "5px",
       color: c.text,
       fontSize: "14px",
       lineHeight: "1.4",
@@ -379,7 +408,7 @@ export const editorTheme = EditorView.theme(
       width: "100%",
       height: "1px",
       verticalAlign: "middle",
-      backgroundColor: c.border,
+      backgroundColor: "var(--color-border-strong)",
     },
   },
   { dark: true },
@@ -395,8 +424,8 @@ const highlight = HighlightStyle.define([
   { tag: [t.comment, t.lineComment, t.blockComment], color: "var(--color-faint)", fontStyle: "italic" },
   { tag: [t.function(t.variableName), t.function(t.propertyName)], color: "var(--color-syn-function)" },
   { tag: [t.typeName, t.className], color: "var(--color-syn-type)" },
-  { tag: [t.propertyName, t.attributeName], color: "var(--color-text-soft)" },
-  { tag: [t.tagName], color: "var(--color-danger)" },
+  { tag: [t.propertyName, t.attributeName], color: "var(--color-hue-verdigris)" },
+  { tag: [t.tagName], color: "var(--color-hue-coral)" },
 ]);
 
 export const editorHighlight = syntaxHighlighting(highlight);

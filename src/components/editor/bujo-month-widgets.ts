@@ -346,8 +346,13 @@ export class HabitsWidget extends WidgetType {
 
 // ---------- Gráfico de humor ----------
 
-// Paleta categórica validada para o fundo escuro (#1b1c21): azul e laranja.
-const COLOR = { humor: "#3987e5", stress: "#d95926", temp: "#c98500" };
+// Matizes do Firelight (tokens em globals.css, ajustados por tema): azul
+// (centáurea), coral e mel.
+const COLOR = {
+  humor: "var(--color-chart-humor)",
+  stress: "var(--color-chart-stress)",
+  temp: "var(--color-chart-temp)",
+};
 const SURFACE = "var(--color-panel)";
 
 type Series = { name: string; color: string; values: (number | null)[] };
