@@ -15,7 +15,7 @@ type Item =
 const RECENT_COUNT = 8;
 const DEBOUNCE_MS = 150;
 
-function Highlight({ text, ranges }: { text: string; ranges: [number, number][] }) {
+export function Highlight({ text, ranges }: { text: string; ranges: [number, number][] }) {
   if (ranges.length === 0) return <>{text}</>;
   const out: React.ReactNode[] = [];
   let last = 0;
@@ -146,10 +146,11 @@ function Palette({
     return () => clearTimeout(t);
   }, [currentId]);
 
-  const choose = (item: Item | undefined) => {
+  /** newTab: Ctrl/Cmd+Enter ou Ctrl/Cmd+clique abre numa aba nova do app. */
+  const choose = (item: Item | undefined, newTab = false) => {
     if (!item) return;
     onClose();
-    if (item.kind === "note") goToNote(item.id);
+    if (item.kind === "note") goToNote(item.id, newTab);
     else onCreate(item.title);
   };
 
@@ -181,7 +182,7 @@ function Palette({
               setActive((a) => Math.max(a - 1, 0));
             } else if (e.key === "Enter") {
               e.preventDefault();
-              choose(items[current]);
+              choose(items[current], e.ctrlKey || e.metaKey);
             }
           }}
           className="h-14 min-w-0 flex-1 bg-transparent text-base text-text outline-none placeholder:text-muted"
@@ -214,7 +215,8 @@ function Palette({
               role="option"
               aria-selected={i === current}
               onMouseMove={() => setActive(i)}
-              onClick={() => choose(item)}
+              onClick={(e) => choose(item, e.ctrlKey || e.metaKey || e.shiftKey)}
+              onAuxClick={(e) => e.button === 1 && choose(item, true)}
               className={`cursor-pointer rounded-lg px-3 py-2 ${i === current ? "bg-active" : ""}`}
             >
               {item.kind === "note" ? (

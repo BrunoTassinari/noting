@@ -16,6 +16,7 @@ import {
   createNoteAction,
   deleteNoteAction,
   moveNoteAction,
+  renameFolderAction,
   type ActionResult,
 } from "@/app/(vault)/actions";
 import {
@@ -28,7 +29,9 @@ import {
 import { makeExcerpt } from "@/lib/markdown-text";
 import { ConfirmDialog, PromptDialog } from "./dialogs";
 import { forgetCachedNote, getCachedNote, updateCachedBody } from "./note-cache";
+import { ContextMenuHost } from "./context-menu";
 import { SearchPalette } from "./search-palette";
+import { addTab, pruneNotes } from "./tabs-store";
 import {
   clearOptimisticNote,
   failOptimisticNote,
@@ -54,13 +57,17 @@ type Vault = {
   openSearch: () => void;
   openMove: (note: NoteMeta) => void;
   openDelete: (note: NoteMeta) => void;
+  /** Renomear pasta = mover todas as notas dela (e das subpastas). */
+  openRenameFolder: (path: string) => void;
   showError: (message: string) => void;
   /** Renomear/mover reescreveu [[links]] nestas notas: limpa o cache e avisa. */
   reportRelinked: (ids: string[]) => void;
   /** Mostra a nota na hora (do cache, ou um esqueleto). Chame no clique de um link. */
   openNote: (id: string) => void;
-  /** openNote + navega (para quem não usa <Link>). */
-  goToNote: (id: string) => void;
+  /** openNote + navega (para quem não usa <Link>). newTab: abre numa aba nova do app. */
+  goToNote: (id: string, newTab?: boolean) => void;
+  /** Navega para um endereço do app (nota ou tela), na aba atual ou numa nova. */
+  openHref: (href: string, newTab?: boolean) => void;
   /** Uma nota foi salva: atualiza resumo e data na lista sem ir ao servidor. */
   touchNote: (id: string, body: string) => void;
 };
@@ -85,6 +92,7 @@ type DialogState = { at?: string } & (
   | { kind: "folder" }
   | { kind: "move"; note: NoteMeta }
   | { kind: "delete"; note: NoteMeta }
+  | { kind: "renameFolder"; path: string }
 );
 
 export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children: ReactNode }) {
@@ -194,12 +202,18 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
     },
     [activeId, allNotes],
   );
-  const goToNote = useCallback(
-    (id: string) => {
-      openNote(id);
-      router.push(`/n/${id}`);
+  const openHref = useCallback(
+    (href: string, newTab = false) => {
+      if (newTab) addTab(href);
+      const id = href.startsWith("/n/") ? href.slice(3) : null;
+      if (id) openNote(id);
+      router.push(href);
     },
     [openNote, router],
+  );
+  const goToNote = useCallback(
+    (id: string, newTab = false) => openHref(`/n/${id}`, newTab),
+    [openHref],
   );
 
   const value: Vault = {
@@ -215,6 +229,8 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
     touchNote,
     openNote,
     goToNote,
+    openHref,
+    openRenameFolder: (path) => setDialog({ kind: "renameFolder", path, at: activeId }),
     openMove: (note) => setDialog({ kind: "move", note, at: activeId }),
     openDelete: (note) => setDialog({ kind: "delete", note, at: activeId }),
     showError,
@@ -286,12 +302,47 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
         confirmLabel="Mover para a lixeira"
         onConfirm={async () => {
           if (dialog.kind !== "delete") return null;
-          await whenCreated(dialog.note.id).catch(() => {});
-          const err = actionError(await deleteNoteAction(dialog.note.id));
-          if (!err) close();
-          return err;
+          const { id } = dialog.note;
+          await whenCreated(id).catch(() => {});
+          // Fecha as abas da nota antes; se era a aberta, o servidor leva para
+          // a aba vizinha (desktop) ou para a lista (celular).
+          const next = pruneNotes(new Set([id]));
+          const desktop = window.matchMedia("(min-width: 768px)").matches;
+          const goTo = id === activeId ? (desktop ? (next ?? "/") : "/") : undefined;
+          const err = actionError(await deleteNoteAction(id, goTo));
+          if (err) return err;
+          close();
+          forgetCachedNote(id);
+          return null;
         }}
       />
+
+      <PromptDialog
+        open={dialog.kind === "renameFolder"}
+        onClose={close}
+        title="Renomear pasta"
+        label="Novo caminho da pasta"
+        initialValue={dialog.kind === "renameFolder" ? dialog.path : ""}
+        placeholder="Ex.: Projetos/app-notas"
+        hint="Todas as notas da pasta (e das subpastas) são movidas; os [[links]] são atualizados."
+        confirmLabel="Renomear"
+        onSubmit={async (value) => {
+          if (dialog.kind !== "renameFolder") return null;
+          const to = normalizeFolder(value);
+          if (!to) return "Informe o nome da pasta.";
+          if (to === dialog.path) {
+            close();
+            return null;
+          }
+          const res = await renameFolderAction(dialog.path, to);
+          if (!res.ok) return res.error;
+          close();
+          reportRelinked(res.relinked);
+          return null;
+        }}
+      />
+
+      <ContextMenuHost />
 
       {toast && (
         <div

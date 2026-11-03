@@ -24,8 +24,8 @@ function onSelectedLine(view: EditorView, el: HTMLElement): boolean {
 export type MarkdownEditorProps = {
   initialValue: string;
   onChange: (value: string) => void;
-  /** Clique num [[link]] (alvo = texto antes do "|"). */
-  onOpenWikilink: (target: string) => void;
+  /** Clique num [[link]] (alvo = texto antes do "|"). newTab: Ctrl/Cmd+clique ou botão do meio. */
+  onOpenWikilink: (target: string, newTab: boolean) => void;
   /** Notas oferecidas no autocomplete de [[ (selfId = a nota aberta). */
   linkTargets: { notes: NoteMeta[]; selfId?: string };
   /** Linha (1…) onde está o cursor, a cada mudança. */
@@ -76,12 +76,13 @@ export default function MarkdownEditor({
     const openLinks = EditorView.domEventHandlers({
       mousedown(event, view) {
         const el = event.target as HTMLElement;
+        if (event.button === 2) return false; // botão direito: menu do navegador
         const modifier = event.metaKey || event.ctrlKey;
         // Link renderizado: clique simples abre. Na linha em edição: Ctrl/Cmd+clique.
         const wiki = el.closest<HTMLElement>(modifier ? "[data-wikilink]" : ".cm-wikilink");
         if (wiki?.dataset.wikilink) {
           event.preventDefault();
-          callbacks.current.onOpenWikilink(wiki.dataset.wikilink);
+          callbacks.current.onOpenWikilink(wiki.dataset.wikilink, modifier || event.button === 1);
           return true;
         }
         const link = el.closest<HTMLElement>(".cm-link[data-href]");

@@ -6,11 +6,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { renameNoteAction, saveNoteBodyAction } from "@/app/(vault)/actions";
 import {
   CancelTaskIcon,
-  CloseIcon,
   CloudAlertIcon,
   CloudCheckIcon,
   LinkIcon,
-  ListIcon,
   MenuIcon,
   MigrateIcon,
   MoreIcon,
@@ -29,6 +27,7 @@ import { sameWikilinkTargets, type Backlink } from "@/lib/wikilinks";
 import { sha256Hex } from "@/lib/hash";
 import { parseHeadings } from "@/lib/outline";
 import type { EditorApi } from "@/components/editor/markdown-editor";
+import { usePublishEditor } from "./active-editor";
 import { Backlinks } from "./backlinks";
 import { MobileToolbar } from "./mobile-toolbar";
 import { Outline } from "./outline";
@@ -38,10 +37,12 @@ import { cancelTasks, MigrateTaskSheet } from "./migrate-task";
 import { updateCachedBody } from "./note-cache";
 import { PeriodicArrow, PeriodicNav, usePeriodicMenuItems } from "./periodic-nav";
 import { markEdited, whenCreated } from "./optimistic-note";
+import { TabHistoryNav } from "./tabs";
 import { actionError, useVault } from "./vault-context";
 
 type SaveStatus = "saved" | "pending" | "saving" | "error" | "conflict";
 
+const NO_BACKLINKS: Backlink[] = [];
 const SAVE_DELAY_MS = 700;
 const RETRY_DELAY_MS = 4000;
 
@@ -64,7 +65,9 @@ export function NoteView({
   const editorApi = useRef<EditorApi | null>(null);
   const [cursorLine, setCursorLine] = useState<number | null>(null);
   const headings = useMemo(() => parseHeadings(body), [body]);
-  const [panels, setPanels] = useState({ backlinks: true, outline: true });
+  const goToLine = useCallback((line: number) => editorApi.current?.goToLine(line), []);
+  // Backlinks e Tópicos ficam nas laterais: entrega os dados desta nota a elas.
+  usePublishEditor(note.id, { backlinks: note.backlinks ?? NO_BACKLINKS, headings, cursorLine, goToLine });
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [migrateOpen, setMigrateOpen] = useState(false);
@@ -76,7 +79,7 @@ export function NoteView({
     {
       label: `Backlinks (${backlinkCount}) e tópicos`,
       icon: <LinkIcon size={15} />,
-      className: "lg:hidden",
+      className: "md:hidden",
       onSelect: () => setSheetOpen(true),
     },
     { label: "Migrar tarefa…", icon: <MigrateIcon size={15} />, onSelect: () => setMigrateOpen(true) },
@@ -132,22 +135,9 @@ export function NoteView({
         />
       </div>
 
-      {/* Abas (desktop) */}
-      <div className="hidden h-10 shrink-0 items-stretch border-b border-border bg-rail md:flex">
-        <div className="flex min-w-0 max-w-[260px] items-center gap-2.5 border-t-2 border-accent bg-surface pl-4 pr-3 text-[13px] text-text-strong">
-          <span className="truncate">{note.title}</span>
-          <Link
-            href="/"
-            aria-label={`Fechar aba ${note.title}`}
-            className="flex size-5 shrink-0 items-center justify-center rounded text-muted hover:bg-active hover:text-text"
-          >
-            <CloseIcon size={12} />
-          </Link>
-        </div>
-      </div>
-
       {/* Caminho + ações (desktop) */}
-      <div className="hidden h-9 shrink-0 items-center gap-2 bg-surface px-4 text-xs text-muted md:flex">
+      <div className="hidden h-9 shrink-0 items-center gap-2 bg-surface px-3 text-xs text-muted md:flex">
+        <TabHistoryNav />
         {folderSegments(note.path).map((seg, i) => (
           <span key={i} className="flex items-center gap-2">
             <span>{seg}</span>
@@ -190,41 +180,6 @@ export function NoteView({
           </div>
         </div>
 
-        {/* Painel direito (desktop largo) */}
-        <aside className="hidden w-72 shrink-0 flex-col border-l border-border bg-panel lg:flex">
-          <div className="flex h-10 shrink-0 items-center gap-1 px-2.5">
-            {(
-              [
-                ["backlinks", "Backlinks", <LinkIcon key="l" size={16} />],
-                ["outline", "Tópicos", <ListIcon key="o" size={16} />],
-              ] as const
-            ).map(([key, label, icon]) => (
-              <button
-                key={key}
-                type="button"
-                aria-label={`Mostrar ${label}`}
-                title={label}
-                aria-pressed={panels[key]}
-                onClick={() => setPanels((p) => ({ ...p, [key]: !p[key] }))}
-                className={`flex size-7 items-center justify-center rounded-md ${
-                  panels[key] ? "bg-active text-accent" : "text-muted hover:bg-card hover:text-text"
-                }`}
-              >
-                {icon}
-              </button>
-            ))}
-          </div>
-          <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-3.5 pb-4 pt-2">
-            {panels.backlinks && <Backlinks items={note.backlinks ?? []} />}
-            {panels.outline && (
-              <Outline
-                headings={headings}
-                cursorLine={cursorLine}
-                onSelect={(line) => editorApi.current?.goToLine(line)}
-              />
-            )}
-          </div>
-        </aside>
       </div>
 
       <MobileToolbar onFormat={(kind) => editorApi.current?.format(kind)} />
@@ -405,10 +360,10 @@ function BodyEditor({
   const { notes, createNote, goToNote } = useVault();
   const [ready, setReady] = useState(false);
 
-  const openWikilink = (target: string) => {
+  const openWikilink = (target: string, newTab: boolean) => {
     const found = resolveWikilink(notes, target, note.path);
     if (found) {
-      if (found.id !== note.id) goToNote(found.id);
+      if (found.id !== note.id || newTab) goToNote(found.id, newTab);
       return;
     }
     // Como no Obsidian: link para nota inexistente cria a nota (na raiz).

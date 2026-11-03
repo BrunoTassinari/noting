@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { MenuIcon } from "@/components/icons";
+import { TabHistoryNav } from "./tabs";
 import { displayFolder, folderSegments, type NoteMeta } from "@/lib/note-paths";
 
 const LINES = ["92%", "78%", "86%", "40%", "0", "70%", "88%", "55%"];
@@ -21,12 +22,8 @@ export function NoteSkeleton({ note }: { note: NoteMeta }) {
         <span className="size-11" />
       </div>
 
-      <div className="hidden h-10 shrink-0 items-stretch border-b border-border bg-rail md:flex">
-        <div className="flex min-w-0 max-w-[260px] items-center border-t-2 border-accent bg-surface px-4 text-[13px] text-text-strong">
-          <span className="truncate">{note.title}</span>
-        </div>
-      </div>
-      <div className="hidden h-9 shrink-0 items-center gap-2 bg-surface px-4 text-xs text-muted md:flex">
+      <div className="hidden h-9 shrink-0 items-center gap-2 bg-surface px-3 text-xs text-muted md:flex">
+        <TabHistoryNav />
         {folderSegments(note.path).map((seg, i) => (
           <span key={i} className="flex items-center gap-2">
             <span>{seg}</span>

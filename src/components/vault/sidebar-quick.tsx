@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { loadBacklogAction } from "@/app/(vault)/migrate-actions";
 import { loadListsAction, updateListItemAction } from "@/app/(vault)/lists-actions";
 import type { ListsPayload } from "@/server/lists";
 import type { Backlog } from "@/server/migrate";
 import { StateBox } from "./list-state";
+import { AppLink, wantsNewTab } from "./note-link";
 import { useVault } from "./vault-context";
 
 // Visualizações rápidas da barra lateral: Pendências e Listas, sem sair da
@@ -14,7 +14,7 @@ import { useVault } from "./vault-context";
 
 const LIST_KEY = "noting-sidebar-list";
 
-function useReloadOnFocus(load: () => void) {
+export function useReloadOnFocus(load: () => void) {
   useEffect(() => {
     load();
     const onFocus = () => document.visibilityState === "visible" && load();
@@ -29,9 +29,9 @@ function useReloadOnFocus(load: () => void) {
 
 function Footer({ href, label }: { href: string; label: string }) {
   return (
-    <Link href={href} className="mt-3 block px-3 py-2 text-[13px] text-accent hover:underline">
+    <AppLink href={href} className="mt-3 block px-3 py-2 text-[13px] text-accent hover:underline">
       {label}
-    </Link>
+    </AppLink>
   );
 }
 
@@ -81,7 +81,8 @@ export function BacklogQuick() {
                 <li key={t.line}>
                   <button
                     type="button"
-                    onClick={() => goToNote(data.noteId!)}
+                    onClick={(e) => goToNote(data.noteId!, wantsNewTab(e))}
+                    onAuxClick={(e) => e.button === 1 && goToNote(data.noteId!, true)}
                     className="flex min-h-11 w-full items-start gap-2 rounded-md px-3 py-1.5 text-left text-[15px] text-text hover:bg-card md:min-h-7 md:text-[13px]"
                   >
                     <span aria-hidden="true" className="mt-[3px] size-3 shrink-0 rounded-[3px] border-[1.5px] border-faint" />
