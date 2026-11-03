@@ -51,13 +51,13 @@
   --color-hue-lilac: #cac8ed;
   --color-hue-orchid: #ceaae6;
 
-  /* Papéis do editor (derivados das matizes, como no Firelight). */
-  --color-h1: var(--color-hue-rose);
-  --color-h2: var(--color-hue-ember);
-  --color-h3: var(--color-hue-apricot);
-  --color-h4: var(--color-hue-honey);
-  --color-h5: var(--color-hue-verdigris);
-  --color-h6: var(--color-hue-cornflower);
+  /* Papéis do editor. Títulos neutros (sem cor por nível). */
+  --color-h1: var(--color-text-strong);
+  --color-h2: var(--color-text-strong);
+  --color-h3: var(--color-text-strong);
+  --color-h4: var(--color-text-strong);
+  --color-h5: var(--color-text-strong);
+  --color-h6: var(--color-text-strong);
   --color-link: var(--color-hue-cornflower);
   --color-tag-text: #c5c3c0;
   --color-tag-bg: #383837;
