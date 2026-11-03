@@ -1,5 +1,6 @@
 "use client";
 
+import { getUserHabits } from "@/lib/user-habits";
 import { useCallback, useTransition } from "react";
 import { openPeriodicNoteAction } from "@/app/(vault)/actions";
 import { type Day, isoDay, periodicNote, type PeriodicKind, today } from "@/lib/bujo";
@@ -17,7 +18,7 @@ export function usePeriodicNotes() {
 
   const openPeriodic = useCallback(
     (kind: PeriodicKind, d: Day = today()) => {
-      const { ref, template } = periodicNote(kind, d);
+      const { ref, template } = periodicNote(kind, d, getUserHabits());
       const existing = notes.find((n) => n.path === ref.path && n.title === ref.title);
       if (existing) {
         if (existing.id !== activeNote?.id) goToNote(existing.id);

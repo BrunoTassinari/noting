@@ -34,7 +34,7 @@ import { useVault } from "./vault-context";
 /** Tela "Notas" do celular (artboard Mobile · arquivos). */
 export function MobileHome() {
   const themePref = useThemePref();
-  const { notes, creating, createNote, openNewFolder, openSearch } = useVault();
+  const { notes, creating, createNote, openNewFolder, openSearch, openSettings } = useVault();
   const { openPeriodic } = usePeriodicNotes();
   const [tab, setTab] = useState<"recent" | "folders" | "backlog" | "lists">("recent");
   // Resumos vêm à parte (não estão no layout), só quando a lista aparece.
@@ -83,6 +83,7 @@ export function MobileHome() {
               icon: <ThemeIcon pref={themePref} size={15} />,
               onSelect: () => setThemePref(NEXT_THEME[themePref]),
             },
+            { label: "Configurações", icon: <SlidersIcon size={15} />, onSelect: openSettings },
             { label: "Sair", icon: <LogoutIcon size={15} />, onSelect: () => void signOut() },
           ]}
         />

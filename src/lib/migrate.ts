@@ -289,7 +289,7 @@ export type DestinationSpec = {
   insert: (body: string, add: string[]) => string;
 };
 
-export function destinationSpec(dest: Destination, today: Day): DestinationSpec {
+export function destinationSpec(dest: Destination, today: Day, habits: string[] = []): DestinationSpec {
   switch (dest) {
     case "today":
     case "tomorrow": {
@@ -299,7 +299,7 @@ export function destinationSpec(dest: Destination, today: Day): DestinationSpec 
     case "month":
       return {
         ref: monthlyRef(today),
-        template: monthlyTemplate(today),
+        template: monthlyTemplate(today, habits),
         scheduled: true,
         insert: insertInMonthly,
       };

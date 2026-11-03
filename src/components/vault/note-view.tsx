@@ -34,7 +34,7 @@ import { Outline } from "./outline";
 import { Sheet } from "./sheet";
 import { Menu } from "./menu";
 import { cancelTasks, MigrateTaskSheet } from "./migrate-task";
-import { updateCachedBody } from "./note-cache";
+import { onNotesChanged, updateCachedBody } from "./note-cache";
 import { PeriodicArrow, PeriodicNav, usePeriodicMenuItems } from "./periodic-nav";
 import { markEdited, whenCreated } from "./optimistic-note";
 import { TabHistoryNav } from "./tabs";
@@ -530,8 +530,7 @@ function useAutosave(
   // Voltou para esta aba/app sem nada pendente: pega a versão mais nova do
   // servidor antes que você comece a digitar sobre um texto velho.
   useEffect(() => {
-    const onVisible = async () => {
-      if (document.visibilityState !== "visible") return;
+    const refreshFromServer = async () => {
       if (saving.current || conflict.current || latest.current !== saved.current) return;
       const before = saved.current;
       const serverBody = await fetchServerBody();
@@ -541,9 +540,19 @@ function useAutosave(
         replaceWith(serverBody);
       }
     };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refreshFromServer();
+    };
+    // Uma ação fora do editor (configurações, listas, migração) mudou esta nota.
+    const stop = onNotesChanged((ids) => {
+      if (ids.includes(noteId)) void refreshFromServer();
+    });
     document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [fetchServerBody, replaceWith]);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [fetchServerBody, replaceWith, noteId]);
 
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {

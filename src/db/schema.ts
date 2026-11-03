@@ -1,5 +1,6 @@
 import { sql, type SQL } from "drizzle-orm";
 import {
+  jsonb,
   boolean,
   check,
   index,
@@ -188,5 +189,18 @@ export const trash = pgTable(
   },
   (t) => [index("trash_user_deleted_idx").on(t.userId, t.deletedAt.desc())],
 );
+
+// Configurações de cada pessoa (por enquanto, a lista de hábitos do Bullet
+// Journal usada no formulário do dia e nos meses novos).
+export const userSettings = pgTable("user_settings", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  habits: jsonb("habits").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
 
 export type Note = typeof notes.$inferSelect;

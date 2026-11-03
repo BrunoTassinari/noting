@@ -12,7 +12,7 @@
 //     - Exercício
 //   ---
 
-import { type Day, DEFAULT_HABITS, dailyRef, day, refLink, WEEKDAYS_SHORT } from "./bujo";
+import { type Day, dailyRef, day, refLink, WEEKDAYS_SHORT } from "./bujo";
 import type { FmValue } from "./frontmatter";
 
 export const HUMOR = ["Péssimo", "Ruim", "Ok", "Bom", "Ótimo"];
@@ -104,9 +104,9 @@ export const daysInMonth = (y: number, m: number) => new Date(Date.UTC(y, m, 0))
 /**
  * Conteúdo de ```bujo-habits```: "month: 2026-11" e "- Hábito" por linha
  * (o formato antigo "- Hábito: 1, 2" vale; os números são ignorados).
- * Lista vazia → DEFAULT_HABITS.
+ * Lista vazia → `fallback` (os hábitos configurados da pessoa).
  */
-export function parseHabitsBlock(inner: string): { month: string | null; habits: string[] } {
+export function parseHabitsBlock(inner: string, fallback: string[] = []): { month: string | null; habits: string[] } {
   const month = /^\s*month:\s*(\d{4}-\d{2})\s*$/m.exec(inner)?.[1] ?? null;
   const habits: string[] = [];
   for (const line of inner.split("\n")) {
@@ -115,7 +115,7 @@ export function parseHabitsBlock(inner: string): { month: string | null; habits:
     const name = m[1].replace(/\s*:\s*[\d\s,;]*$/, "").trim();
     if (name && !habits.includes(name)) habits.push(name);
   }
-  return { month, habits: habits.length ? habits : [...DEFAULT_HABITS] };
+  return { month, habits: habits.length ? habits : [...fallback] };
 }
 
 /** Dados de um mês: dia do mês (1…31) → dados (só dias com nota). */

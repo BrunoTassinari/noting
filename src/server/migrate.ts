@@ -1,4 +1,5 @@
 import "server-only";
+import { getHabits } from "./settings";
 import { and, eq, inArray, like, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { notes } from "@/db/schema";
@@ -56,7 +57,7 @@ export async function writeToDestination(
   lines: string[],
 ): Promise<DestinationNote> {
   if (lines.length === 0) throw new NoteError("Nada para migrar.");
-  const spec = destinationSpec(dest, today);
+  const spec = destinationSpec(dest, today, dest === "month" ? await getHabits(userId) : []);
   let created = false;
   for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
     const note = await getOrCreateNote(userId, spec.ref, spec.template);
@@ -166,13 +167,14 @@ export async function migrateTasks(
     (a): a is Destination => a !== "done" && a !== "cancel",
   );
   const sourceIds = [...new Set(items.map((i) => i.noteId))];
+  const habits = dests.includes("month") ? await getHabits(userId) : [];
   let created = false;
   for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
     // Uma ida ao banco: destinos (criados se faltarem) e origens em paralelo.
     const [destNotes, sources] = await Promise.all([
       Promise.all(
         dests.map((d) => {
-          const spec = destinationSpec(d, today);
+          const spec = destinationSpec(d, today, habits);
           return getOrCreateNote(userId, spec.ref, spec.template);
         }),
       ),

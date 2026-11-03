@@ -1,6 +1,7 @@
 import { type EditorState, Facet, type Range, StateEffect, StateField } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView, WidgetType } from "@codemirror/view";
-import { dayFromDaily, DEFAULT_HABITS } from "@/lib/bujo";
+import { dayFromDaily } from "@/lib/bujo";
+import { getUserHabits } from "@/lib/user-habits";
 import { asList, asNumber, asScale, CLIMA, HUMOR, parseHabitsBlock, STRESS } from "@/lib/bujo-data";
 import { type FmValue, findFrontmatter, readFrontmatter, setFrontmatterKey } from "@/lib/frontmatter";
 import { el, icon } from "./bujo-dom";
@@ -112,11 +113,18 @@ function numberInput(value: number | null, unit: string, label: string, onCommit
 
 /** Formulário do bloco ```bujo-dia```: lê e grava o frontmatter da nota. */
 class DayFormWidget extends WidgetType {
-  constructor(readonly values: Record<string, FmValue>) {
+  constructor(
+    readonly values: Record<string, FmValue>,
+    /** Hábitos configurados da pessoa (botões do formulário). */
+    readonly habits: string[],
+  ) {
     super();
   }
   eq(other: DayFormWidget) {
-    return JSON.stringify(other.values) === JSON.stringify(this.values);
+    return (
+      JSON.stringify(other.values) === JSON.stringify(this.values) &&
+      other.habits.join("\n") === this.habits.join("\n")
+    );
   }
   toDOM(view: EditorView) {
     const v = this.values;
@@ -159,7 +167,8 @@ class DayFormWidget extends WidgetType {
     root.append(row("Medidas", nums));
 
     const marked = asList(v.habitos);
-    const all = [...DEFAULT_HABITS, ...marked.filter((h) => !DEFAULT_HABITS.includes(h))];
+    const base = this.habits;
+    const all = [...base, ...marked.filter((h) => !base.includes(h))];
     const habits = el("div", "cm-bujo-chips");
     for (const h of all) {
       const on = marked.includes(h);
@@ -169,6 +178,9 @@ class DayFormWidget extends WidgetType {
           setKey(view, "habitos", next.length ? next : null);
         }),
       );
+    }
+    if (all.length === 0) {
+      habits.append(el("span", "cm-bujo-hint", "Nenhum hábito ainda. Configure em Configurações."));
     }
     root.append(row("Hábitos", habits));
 
@@ -252,7 +264,7 @@ class PropertiesWidget extends WidgetType {
 /** Hábitos do ```bujo-habits``` do mesmo mês nesta nota (null = nenhum). */
 function habitsFor(blocks: Block[], month: string | undefined): string[] | null {
   const b = blocks.find((x) => x.kind === "habits" && x.month === month);
-  return b && month ? parseHabitsBlock(b.inner).habits : null;
+  return b && month ? parseHabitsBlock(b.inner, getUserHabits()).habits : null;
 }
 
 type FieldValue = { focused: boolean; decos: DecorationSet };
@@ -295,8 +307,8 @@ function build(state: EditorState, focused: boolean): DecorationSet {
   for (const b of blocks) {
     if (touches(state, focused, b.from, b.to)) continue; // o live preview mostra como código
     let widget: WidgetType;
-    if (b.kind === "dia") widget = new DayFormWidget(values);
-    else if (b.kind === "habits") widget = new HabitsWidget(b.month ?? null, parseHabitsBlock(b.inner).habits);
+    if (b.kind === "dia") widget = new DayFormWidget(values, getUserHabits());
+    else if (b.kind === "habits") widget = new HabitsWidget(b.month ?? null, parseHabitsBlock(b.inner, getUserHabits()).habits);
     else widget = new HumorWidget(b.month ?? null, habitsFor(blocks, b.month));
     decos.push(Decoration.replace({ widget, block: true }).range(b.from, b.to));
   }

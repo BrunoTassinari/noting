@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { parseDay, periodicNote, type PeriodicKind } from "@/lib/bujo";
 import { isUuid } from "@/lib/note-paths";
+import { getHabits } from "@/server/settings";
 import { getOrCreateNote, pullFutureLogIntoMonth } from "@/server/bujo";
 import {
   createNote,
@@ -118,7 +119,7 @@ export async function openPeriodicNoteAction(
   const user = await requireUser();
   let id: string;
   try {
-    const { ref, template } = periodicNote(kind, d);
+    const { ref, template } = periodicNote(kind, d, kind === "month" ? await getHabits(user.id) : []);
     const note = await getOrCreateNote(user.id, ref, template, clientId);
     if (note.created && kind === "month") await pullFutureLogIntoMonth(user.id, note, d);
     id = note.id;

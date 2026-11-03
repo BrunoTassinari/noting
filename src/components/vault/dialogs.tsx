@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 // Diálogos modais com <dialog> nativo (foco, Esc e backdrop de graça).
 
-function Modal({
+export function Modal({
   open,
   onClose,
   title,
@@ -47,7 +47,7 @@ function Modal({
   );
 }
 
-const buttonBase =
+export const buttonBase =
   "h-11 rounded-lg px-4 text-sm font-medium transition-opacity disabled:opacity-60 md:h-9";
 
 export function DialogButtons({

@@ -26,6 +26,7 @@ import { type FmValue, readFrontmatter, setFrontmatterKey } from "@/lib/frontmat
 import { sha256Hex } from "@/lib/hash";
 import { getOrCreateNote, pullFutureLogIntoMonth } from "./bujo";
 import { NoteError, updateNoteBody } from "./notes";
+import { getHabits } from "./settings";
 
 // Leitura e gravação dos dados do Bullet Journal em notas que NÃO estão
 // abertas no editor (as diárias do mês, a nota do mês). A nota aberta é
@@ -36,6 +37,7 @@ export async function getMonthData(userId: string, month: string): Promise<Month
   if (!ym) throw new NoteError("Mês inválido.");
   const prefix = `${ym.y}.${String(ym.m).padStart(2, "0")}.`;
   const monthRef = monthlyRef(day(ym.y, ym.m, 1));
+  const habitsPromise = getHabits(userId); // em paralelo com as notas
   const [daily, monthly] = await Promise.all([
     db
       .select({ id: notes.id, title: notes.title, body: notes.body })
@@ -54,11 +56,12 @@ export async function getMonthData(userId: string, month: string): Promise<Month
     days[+m[1]] = { ...dayData(readFrontmatter(n.body)), id: n.id };
   }
 
-  let habits = parseHabitsBlock("").habits;
+  const fallback = await habitsPromise;
+  let habits = fallback;
   const body = monthly[0]?.body ?? "";
   const block = new RegExp("^```bujo-habits[ \\t]*\\n([\\s\\S]*?)^```[ \\t]*$", "gm");
   for (let r = block.exec(body); r; r = block.exec(body)) {
-    const parsed = parseHabitsBlock(r[1]);
+    const parsed = parseHabitsBlock(r[1], fallback);
     if (parsed.month === null || parsed.month === month) {
       habits = parsed.habits;
       if (parsed.month === month) break;
@@ -148,7 +151,7 @@ export async function appendToMonth(
   const r = await editNote(
     userId,
     monthlyRef(d),
-    monthlyTemplate(d),
+    monthlyTemplate(d, await getHabits(userId)),
     (body) => appendToSection(body, heading, line),
     // Nota do mês nova: traz as tarefas do Future Log, como ao abrir pelo menu.
     { relink: true, onCreate: (note) => pullFutureLogIntoMonth(userId, note, d) },

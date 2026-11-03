@@ -31,7 +31,9 @@ import { makeExcerpt } from "@/lib/markdown-text";
 import { isoMonth, monthFromMonthly } from "@/lib/bujo";
 import { loadMonth } from "@/components/editor/bujo-month-store";
 import { ConfirmDialog, PromptDialog } from "./dialogs";
-import { forgetCachedNote, getCachedNote, onNotesChanged, updateCachedBody } from "./note-cache";
+import { forgetCachedNote, getCachedNote, notesChanged, onNotesChanged, updateCachedBody } from "./note-cache";
+import { SettingsDialog } from "./settings-dialog";
+import { setUserHabits } from "@/lib/user-habits";
 import { ContextMenuHost } from "./context-menu";
 import { SearchPalette } from "./search-palette";
 import { addTab, pruneNotes } from "./tabs-store";
@@ -58,6 +60,8 @@ type Vault = {
   createNote: (path: string, title?: string) => void;
   openNewFolder: () => void;
   openSearch: () => void;
+  /** Configurações da pessoa (hábitos). */
+  openSettings: () => void;
   openMove: (note: NoteMeta) => void;
   openDelete: (note: NoteMeta) => void;
   /** Renomear pasta = mover todas as notas dela (e das subpastas). */
@@ -101,7 +105,17 @@ type DialogState = { at?: string } & (
   | { kind: "deleteFolder"; path: string }
 );
 
-export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children: ReactNode }) {
+export function VaultProvider({
+  notes,
+  habits,
+  children,
+}: {
+  notes: NoteMeta[];
+  habits: string[];
+  children: ReactNode;
+}) {
+  // Hábitos configurados: o editor e os modelos de nota leem do módulo.
+  setUserHabits(habits);
   const params = useParams<{ id?: string }>();
   const router = useRouter();
   const optimistic = useOptimisticNote();
@@ -186,6 +200,7 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
 
   // Busca: Ctrl/Cmd+K de qualquer lugar (inclusive de dentro do editor).
   const [searchOpen, setSearchOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "k") {
@@ -256,6 +271,7 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
     createNote,
     openNewFolder: () => setDialog({ kind: "folder", at: activeId }),
     openSearch: () => setSearchOpen(true),
+    openSettings: () => setSettingsOpen(true),
     touchNote,
     openNote,
     goToNote,
@@ -397,6 +413,18 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
           ids.forEach((id) => forgetCachedNote(id));
           if (activeId && ids.has(activeId)) router.push(next ?? "/");
           return null;
+        }}
+      />
+
+      <SettingsDialog
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        habits={habits}
+        onSaved={(monthNoteId) => {
+          setSettingsOpen(false);
+          if (monthNoteId) notesChanged([monthNoteId]);
+          showError("Configurações salvas.");
+          router.refresh();
         }}
       />
 

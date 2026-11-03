@@ -161,7 +161,7 @@ export function weeklyTemplate(d: Day): string {
   ].join("\n");
 }
 
-export function monthlyTemplate(d: Day, habits: string[] = DEFAULT_HABITS): string {
+export function monthlyTemplate(d: Day, habits: string[] = []): string {
   const prev = addMonths(d, -1);
   const next = addMonths(d, 1);
   return [
@@ -205,9 +205,9 @@ export const futureLogSection = (d: Day) => `## ${isoMonth(d)} · ${cap(MONTHS[M
 export type PeriodicKind = "day" | "week" | "month";
 
 /** Caminho e modelo da nota do dia/semana/mês que contém `d`. */
-export function periodicNote(kind: PeriodicKind, d: Day): { ref: NoteRef; template: string } {
+export function periodicNote(kind: PeriodicKind, d: Day, habits: string[] = []): { ref: NoteRef; template: string } {
   if (kind === "week") return { ref: weeklyRef(d), template: weeklyTemplate(d) };
-  if (kind === "month") return { ref: monthlyRef(d), template: monthlyTemplate(d) };
+  if (kind === "month") return { ref: monthlyRef(d), template: monthlyTemplate(d, habits) };
   return { ref: dailyRef(d), template: dailyTemplate(d) };
 }
 

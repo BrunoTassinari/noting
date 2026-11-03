@@ -12,6 +12,7 @@ import {
 } from "@/components/icons";
 import { BUJO_SCREENS } from "./bujo-screens";
 import { ThemeButton } from "./theme-button";
+import { SettingsButton } from "./settings-button";
 import type { NoteMeta } from "@/lib/note-paths";
 import { MobileHome } from "./mobile-home";
 import { AppLink } from "./note-link";
@@ -23,9 +24,17 @@ import { NoteSkeleton } from "./note-skeleton";
 import { NoteView } from "./note-view";
 import { useVault, VaultProvider } from "./vault-context";
 
-export function VaultShell({ notes, children }: { notes: NoteMeta[]; children: ReactNode }) {
+export function VaultShell({
+  notes,
+  habits,
+  children,
+}: {
+  notes: NoteMeta[];
+  habits: string[];
+  children: ReactNode;
+}) {
   return (
-    <VaultProvider notes={notes}>
+    <VaultProvider notes={notes} habits={habits}>
       <Layout>{children}</Layout>
     </VaultProvider>
   );
@@ -101,6 +110,7 @@ function Layout({ children }: { children: ReactNode }) {
           </AppLink>
         ))}
         <div className="flex-1" />
+        <SettingsButton />
         <ThemeButton />
         <form action={signOut}>
           <button
