@@ -97,17 +97,17 @@ export function MobileHome() {
         <div className="mt-2 flex gap-2">
           {(
             [
-              ["week", "Esta semana", <CalendarWeekIcon key="w" size={18} />],
-              ["month", "Este mês", <CalendarMonthIcon key="m" size={18} />],
+              ["week", "Esta semana", <CalendarWeekIcon key="w" size={18} />, "text-hue-coral"],
+              ["month", "Este mês", <CalendarMonthIcon key="m" size={18} />, "text-hue-apricot"],
             ] as const
-          ).map(([kind, label, icon]) => (
+          ).map(([kind, label, icon, tone]) => (
             <button
               key={kind}
               type="button"
               onClick={() => openPeriodic(kind)}
               className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border text-sm font-medium text-text active:bg-card"
             >
-              <span className="text-muted">{icon}</span>
+              <span className={tone}>{icon}</span>
               {label}
             </button>
           ))}
@@ -116,13 +116,13 @@ export function MobileHome() {
 
       {/* Quebra de linha só se os atalhos não couberem numa linha. */}
       <div className="flex shrink-0 flex-wrap gap-2 px-4 pb-3">
-        {BUJO_SCREENS.map(({ href, label, Icon }) => (
+        {BUJO_SCREENS.map(({ href, label, Icon, tone }) => (
           <Link
             key={href}
             href={href}
             className="flex h-11 flex-auto items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-border bg-rail px-2.5 text-[13px] text-text active:bg-card"
           >
-            <Icon size={16} className="shrink-0 text-accent" />
+            <Icon size={16} className={`shrink-0 ${tone}`} />
             {label}
           </Link>
         ))}

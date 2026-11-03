@@ -63,38 +63,38 @@ function Layout({ children }: { children: ReactNode }) {
           aria-label="Buscar (Ctrl K)"
           title="Buscar (Ctrl K)"
           onClick={openSearch}
-          className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-card hover:text-text"
+          className="flex size-9 items-center justify-center rounded-lg text-hue-cornflower opacity-85 hover:bg-card hover:opacity-100"
         >
           <SearchIcon size={18} />
         </button>
         <div aria-hidden="true" className="my-1 h-px w-6 bg-border" />
         {(
           [
-            ["day", "Hoje", <CalendarIcon key="d" size={18} />],
-            ["week", "Esta semana", <CalendarWeekIcon key="w" size={18} />],
-            ["month", "Este mês", <CalendarMonthIcon key="m" size={18} />],
+            ["day", "Hoje", <CalendarIcon key="d" size={18} />, "text-hue-rose"],
+            ["week", "Esta semana", <CalendarWeekIcon key="w" size={18} />, "text-hue-coral"],
+            ["month", "Este mês", <CalendarMonthIcon key="m" size={18} />, "text-hue-apricot"],
           ] as const
-        ).map(([kind, label, icon]) => (
+        ).map(([kind, label, icon, tone]) => (
           <button
             key={kind}
             type="button"
             aria-label={label}
             title={label}
             onClick={() => openPeriodic(kind)}
-            className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-card hover:text-text"
+            className={`flex size-9 items-center justify-center rounded-lg opacity-85 hover:bg-card hover:opacity-100 ${tone}`}
           >
             {icon}
           </button>
         ))}
-        {BUJO_SCREENS.map(({ href, label, Icon }) => (
+        {BUJO_SCREENS.map(({ href, label, Icon, tone }) => (
           <AppLink
             key={href}
             href={href}
             aria-label={label}
             title={label}
             aria-current={screen === href ? "page" : undefined}
-            className={`flex size-9 items-center justify-center rounded-lg hover:bg-card hover:text-text ${
-              screen === href ? "bg-card text-accent" : "text-muted"
+            className={`flex size-9 items-center justify-center rounded-lg hover:bg-card hover:opacity-100 ${tone} ${
+              screen === href ? "bg-card" : "opacity-85"
             }`}
           >
             <Icon size={18} />

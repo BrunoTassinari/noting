@@ -46,14 +46,15 @@ import { useVault } from "./vault-context";
 
 type IconType = ComponentType<{ size?: number; className?: string }>;
 
-export const PANELS: Record<PanelKey, { label: string; Icon: IconType; Body: ComponentType }> = {
-  files: { label: "Arquivos", Icon: FolderIcon, Body: FilesPanel },
-  search: { label: "Buscar", Icon: SearchIcon, Body: SearchPanel },
-  signals: { label: "Sinalizadores", Icon: FlagIcon, Body: SignalsPanel },
-  backlinks: { label: "Backlinks", Icon: LinkIcon, Body: BacklinksPanel },
-  outline: { label: "Tópicos", Icon: ListIcon, Body: OutlinePanel },
-  lists: { label: "Listas", Icon: ChecklistIcon, Body: ListsPanel },
-  backlog: { label: "Pendências", Icon: InboxIcon, Body: BacklogPanel },
+// tone: cor do ícone (matizes do tema; classes literais para o Tailwind).
+export const PANELS: Record<PanelKey, { label: string; Icon: IconType; Body: ComponentType; tone: string }> = {
+  files: { label: "Arquivos", Icon: FolderIcon, Body: FilesPanel, tone: "text-hue-honey" },
+  search: { label: "Buscar", Icon: SearchIcon, Body: SearchPanel, tone: "text-hue-cornflower" },
+  signals: { label: "Sinalizadores", Icon: FlagIcon, Body: SignalsPanel, tone: "text-hue-ember" },
+  backlinks: { label: "Backlinks", Icon: LinkIcon, Body: BacklinksPanel, tone: "text-hue-lilac" },
+  outline: { label: "Tópicos", Icon: ListIcon, Body: OutlinePanel, tone: "text-hue-orchid" },
+  lists: { label: "Listas", Icon: ChecklistIcon, Body: ListsPanel, tone: "text-hue-verdigris" },
+  backlog: { label: "Pendências", Icon: InboxIcon, Body: BacklogPanel, tone: "text-hue-fern" },
 };
 
 function ListsPanel() {
@@ -103,7 +104,7 @@ export function SidePanel({ side }: { side: Side }) {
     >
       <div role="tablist" aria-label={`Painéis da lateral ${sideName(side)}`} className="flex h-10 shrink-0 items-center gap-0.5 border-b border-border px-2">
         {keys.map((key) => {
-          const { label, Icon } = PANELS[key];
+          const { label, Icon, tone } = PANELS[key];
           const on = key === active;
           return (
             <button
@@ -119,8 +120,8 @@ export function SidePanel({ side }: { side: Side }) {
                 e.preventDefault();
                 openContextMenu({ x: e.clientX, y: e.clientY }, [moveItem(key, side)], label);
               }}
-              className={`flex size-7 items-center justify-center rounded-md ${
-                on ? "bg-active text-accent" : "text-muted hover:bg-card hover:text-text"
+              className={`flex size-7 items-center justify-center rounded-md ${tone} ${
+                on ? "bg-active" : "opacity-60 hover:bg-card hover:opacity-100"
               }`}
             >
               <Icon size={16} />
