@@ -1,9 +1,9 @@
 import "server-only";
-import { and, eq, ilike, like } from "drizzle-orm";
+import { and, eq, ilike, like, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { links, notes } from "@/db/schema";
 import { type DbLike, rebuildLinks } from "@/db/link-index";
-import { folderName } from "@/lib/note-paths";
+import { folderName, isUuid, type NoteMeta } from "@/lib/note-paths";
 import { type Backlink, findWikilinks } from "@/lib/wikilinks";
 
 export { rebuildLinks };
@@ -53,14 +53,40 @@ function snippetFor(body: string, title: string): string {
   return "";
 }
 
-/** Notas que apontam para noteId (com corpo, para montar o trecho). */
-export function getBacklinkRows(userId: string, noteId: string) {
-  return db
-    .select({ id: notes.id, title: notes.title, path: notes.path, body: notes.body })
-    .from(links)
-    .innerJoin(notes, eq(notes.id, links.fromId))
-    .where(and(eq(links.userId, userId), eq(links.toId, noteId)))
-    .orderBy(notes.title);
+type BacklinkRow = { id: string; title: string; path: string; body: string };
+
+export type NoteWithBacklinks = NoteMeta & { body: string; backlinks: Backlink[] };
+
+/**
+ * A nota e quem aponta para ela (com o trecho do link), numa consulta só:
+ * cada consulta é uma ida ao banco e ocupa uma conexão do pool.
+ */
+export async function getNoteWithBacklinks(userId: string, id: string): Promise<NoteWithBacklinks | null> {
+  if (!isUuid(id)) return null;
+  const [row] = await db
+    .select({
+      id: notes.id,
+      path: notes.path,
+      title: notes.title,
+      updatedAt: notes.updatedAt,
+      body: notes.body,
+      backlinks: sql<BacklinkRow[] | null>`(
+        select json_agg(json_build_object('id', s.id, 'title', s.title, 'path', s.path, 'body', s.body) order by s.title)
+        from ${links} l join ${notes} s on s.id = l.from_id
+        where l.user_id = ${userId} and l.to_id = ${id}
+      )`,
+    })
+    .from(notes)
+    .where(and(eq(notes.userId, userId), eq(notes.id, id)));
+  if (!row) return null;
+  return {
+    id: row.id,
+    path: row.path,
+    title: row.title,
+    updatedAt: row.updatedAt.toISOString(),
+    body: row.body,
+    backlinks: toBacklinks(row.backlinks ?? [], row.title),
+  };
 }
 
 export function toBacklinks(
