@@ -162,7 +162,13 @@ function FolderRow({
         </button>
       </div>
       {isOpen && (
-        <ul className="flex flex-col gap-px">
+        <ul className="relative flex flex-col gap-px">
+          {/* Linha-guia do nível, alinhada com a seta da pasta (como no Obsidian). */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 w-px bg-border-strong"
+            style={{ left: pad + 7 }}
+          />
           {node.folders.map((f) => (
             <FolderRow key={f.path} node={f} depth={depth + 1} expanded={expanded} activeId={activeId} />
           ))}
