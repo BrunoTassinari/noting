@@ -3,57 +3,72 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-<meta name="theme-color" content="#16171b">
+<meta name="theme-color" content="#2e2e2e" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4eeec" media="(prefers-color-scheme: light)">
 <title>Captura · Noting</title>
 <style>
-  :root { color-scheme: dark; }
+  /* Cores do tema Firelight (as mesmas de src/app/globals.css). */
+  :root {
+    color-scheme: dark;
+    --bg: #2e2e2e; --panel: #232222; --card: #383737; --border: #414040;
+    --text: #d7cec8; --strong: #eae2dc; --muted: #a3a8b4;
+    --accent: #dd7b8f; --accent-ink: #232222; --warn: #f1bb90; --danger: #ff7b7b;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      color-scheme: light;
+      --bg: #f4eeec; --panel: #fef8f6; --card: #e6e0de; --border: #d7d3d2;
+      --text: #473e36; --strong: #3a3129; --muted: #5c606d;
+      --accent: #b83f5f; --accent-ink: #fef8f6; --warn: #906237; --danger: #d7162e;
+    }
+  }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   body {
-    margin: 0; min-height: 100dvh; background: #16171b; color: #dcdee4;
-    font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.5;
+    margin: 0; min-height: 100dvh; background: var(--bg); color: var(--text);
+    font-family: "Hanken Grotesk", Inter, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.5;
     padding: calc(env(safe-area-inset-top) + 20px) 16px calc(env(safe-area-inset-bottom) + 24px);
   }
   main { max-width: 520px; margin: 0 auto; }
   header { display: flex; align-items: center; gap: 12px; }
   header img { width: 40px; height: 40px; border-radius: 10px; flex: none; }
-  h1 { margin: 0; font-size: 19px; font-weight: 600; color: #fff; }
-  .status { margin: 2px 0 0; font-size: 13.5px; color: #8d92a0; }
-  .status.ok { color: #7fd1c4; }
-  .status.warn { color: #f0c78c; }
-  .status a { color: #7fd1c4; }
-  form { margin-top: 20px; background: #1b1c21; border: 1px solid #2a2c33; border-radius: 12px; padding: 12px; }
-  label { display: block; font-size: 13px; color: #8d92a0; margin: 0 0 8px 2px; }
+  h1 { margin: 0; font-size: 19px; font-weight: 600; color: var(--strong); }
+  .status { margin: 2px 0 0; font-size: 13.5px; color: var(--muted); }
+  .status.ok { color: var(--accent); }
+  .status.warn { color: var(--warn); }
+  .status a { color: var(--accent); }
+  form { margin-top: 20px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 0 0 8px 2px; }
   textarea {
     display: block; width: 100%; min-height: 108px; resize: vertical; padding: 10px 12px;
-    background: #16171b; color: #dcdee4; border: 1px solid #2a2c33; border-radius: 8px;
+    background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px;
     font: inherit; font-size: 16px; outline: none;
   }
-  textarea:focus { border-color: #7fd1c4; }
+  textarea:focus { border-color: var(--accent); }
   .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
-  .hint { font-size: 12.5px; color: #8d92a0; }
+  .hint { font-size: 12.5px; color: var(--muted); }
   button, .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
     min-height: 44px; padding: 0 18px; border: 0; border-radius: 10px; cursor: pointer;
     font: inherit; font-size: 15px; font-weight: 600; text-decoration: none;
   }
-  .primary { background: #7fd1c4; color: #101114; }
+  .primary { background: var(--accent); color: var(--accent-ink); }
   .primary:disabled { opacity: .45; cursor: default; }
-  .secondary { background: #1f2126; color: #dcdee4; border: 1px solid #2a2c33; }
-  h2 { margin: 28px 0 8px; font-size: 13px; font-weight: 600; color: #8d92a0; text-transform: uppercase; letter-spacing: .04em; }
+  .secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+  h2 { margin: 28px 0 8px; font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
   ul { list-style: none; margin: 0; padding: 0; }
   li {
     display: flex; align-items: flex-start; gap: 8px; padding: 10px 4px 10px 12px;
-    background: #1b1c21; border: 1px solid #2a2c33; border-radius: 10px; margin-bottom: 8px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px;
   }
   li .text { flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; padding-top: 2px; }
-  li .meta { display: block; font-size: 12.5px; color: #8d92a0; margin-top: 2px; }
+  li .meta { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
   .icon-btn {
     flex: none; width: 44px; height: 44px; min-height: 0; padding: 0; margin: -8px 0 -8px;
-    background: transparent; color: #8d92a0; border-radius: 8px;
+    background: transparent; color: var(--muted); border-radius: 8px;
   }
-  .icon-btn:hover, .icon-btn:focus-visible { background: #1f2126; color: #f08c8c; }
-  .empty { color: #8d92a0; font-size: 14px; margin: 0; }
+  .icon-btn:hover, .icon-btn:focus-visible { background: var(--card); color: var(--danger); }
+  .empty { color: var(--muted); font-size: 14px; margin: 0; }
   .actions { margin-top: 28px; display: flex; gap: 10px; flex-wrap: wrap; }
   svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 </style>
