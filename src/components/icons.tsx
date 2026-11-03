@@ -3,6 +3,7 @@ import {
   ArrowLeft as LArrowLeft,
   ArrowUp as LArrowUp,
   Globe as LGlobe,
+  Waypoints as LWaypoints,
   History as LHistory,
   Paperclip as LPaperclip,
   Sparkles as LSparkles,
@@ -130,6 +131,7 @@ export const SendIcon = make(LArrowUp);
 export const StopIcon = make(LSquare);
 export const HistoryIcon = make(LHistory);
 export const GlobeIcon = make(LGlobe);
+export const GraphIcon = make(LWaypoints);
 
 /** Nuvem com check (não existe nesta versão do Lucide). */
 export function CloudCheckIcon(props: IconProps) {

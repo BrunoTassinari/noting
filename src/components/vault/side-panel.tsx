@@ -7,6 +7,7 @@ import {
   ChecklistIcon,
   FlagIcon,
   FolderIcon,
+  GraphIcon,
   InboxIcon,
   LinkIcon,
   ListIcon,
@@ -27,6 +28,7 @@ import type { SignalSource } from "@/server/lists";
 import { useEditorInfo } from "./active-editor";
 import { Assistant } from "./assistant";
 import { Backlinks } from "./backlinks";
+import { LocalGraphPanel } from "./graph-screen";
 import { openContextMenu, openMenuAt } from "./context-menu";
 import {
   movePanel,
@@ -58,6 +60,7 @@ export const PANELS: Record<PanelKey, { label: string; Icon: IconType; Body: Com
   outline: { label: "Tópicos", Icon: ListIcon, Body: OutlinePanel, tone: "text-hue-orchid" },
   lists: { label: "Listas", Icon: ChecklistIcon, Body: ListsPanel, tone: "text-hue-verdigris" },
   backlog: { label: "Pendências", Icon: InboxIcon, Body: BacklogPanel, tone: "text-hue-fern" },
+  graph: { label: "Grafo local", Icon: GraphIcon, Body: LocalGraphPanel, tone: "text-hue-lilac" },
   assistant: { label: "Assistente", Icon: SparklesIcon, Body: AssistantPanel, tone: "text-hue-orchid" },
 };
 

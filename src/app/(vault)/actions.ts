@@ -166,7 +166,7 @@ export async function renameFolderAction(from: string, to: string): Promise<Reli
   return runRelink((userId) => renameFolder(userId, from, to));
 }
 
-const APP_HREF = /^\/(?:n\/[0-9a-f-]{36}|migrar|pendencias|listas|sinalizadores|assistente|lixeira)?$/;
+const APP_HREF = /^\/(?:n\/[0-9a-f-]{36}|migrar|pendencias|listas|sinalizadores|grafo|assistente|lixeira)?$/;
 
 /**
  * Move para a lixeira. `goTo`: para onde ir se a nota excluída é a aberta
