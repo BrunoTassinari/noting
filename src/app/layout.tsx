@@ -1,17 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Hanken_Grotesk, Space_Mono } from "next/font/google";
 import { ServiceWorkerRegistration } from "@/components/service-worker";
 import { THEME_SCRIPT } from "@/components/theme";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
+// Fontes do tema Firelight (Obsidian): Hanken Grotesk no texto e na
+// interface, Space Mono no código.
+const hankenGrotesk = Hanken_Grotesk({
+  variable: "--font-hanken-grotesk",
+  subsets: ["latin", "latin-ext"],
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
+const spaceMono = Space_Mono({
+  variable: "--font-space-mono",
+  weight: ["400", "700"],
+  subsets: ["latin", "latin-ext"],
 });
 
 export const metadata: Metadata = {
@@ -24,7 +27,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#16171b", // trocado pelo script do tema (claro: #f4f4f1)
+  themeColor: "#232222", // trocado pelo script do tema (claro: #fef8f6)
   width: "device-width",
   initialScale: 1,
   // Ocupa a tela toda no iPhone (safe areas tratadas no CSS) e, no Android,
@@ -37,7 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="pt-BR"
-      className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${hankenGrotesk.variable} ${spaceMono.variable} h-full antialiased`}
       // data-theme é definido pelo script abaixo antes da hidratação.
       suppressHydrationWarning
     >

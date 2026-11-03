@@ -1,73 +1,136 @@
 @import "tailwindcss";
 
-/* Tokens do design (artefato "Notas v1"). Tema escuro por padrão; o claro
-   sobrescreve as variáveis (ver abaixo). */
-@theme {
-  --color-bg: #16171b;
-  --color-rail: #121316;
-  --color-panel: #1b1c21;
-  --color-surface: #1f2126;
-  --color-card: #23262d;
-  --color-active: #2a2d35;
-  --color-code: #15161a;
-  --color-border: #2a2c33;
-  --color-border-strong: #3a3d47;
-  --color-divider: #23252b;
-  --color-text: #dcdee4;
-  --color-text-strong: #ffffff;
-  --color-text-soft: #b4b8c4;
-  --color-body: #d3d6dd;
-  --color-quote: #a3a8b5;
-  --color-muted: #8d92a0;
-  --color-faint: #6a6f7d;
-  --color-accent: #7fd1c4;
-  --color-accent-ink: #101114;
-  --color-danger: #f08c8c;
-  --color-today: #1f2a29;
-  --color-code-text: #c8ccd6;
-  --color-syn-keyword: #7fd1c4;
-  --color-syn-string: #e6c07b;
-  --color-syn-number: #f2a272;
-  --color-syn-function: #8fb8ff;
-  --color-syn-type: #f0c674;
+/* Tokens do design, baseados no tema Firelight do Obsidian (ridusaini/
+   obsidian-firelight, MIT). Escuro = paleta "Smoulder"; claro = "Ash".
+   Equivalências com o Firelight:
+     surface (área da nota)      = --fl-surface-1 (background-primary)
+     rail/panel/bg (barras)      = --fl-surface-0 (background-secondary)
+     card (hover, menus)         ≈ entre --fl-surface-1 e --fl-surface-2
+     active (item selecionado)   = acento 14% sobre --fl-surface-1
+     text-strong/text/text-soft  = --fl-ink-0/1/2; quote = ink-3;
+     muted = ink-4; faint = ink-5; accent = Rose.
+   Tema escuro por padrão; o claro sobrescreve as variáveis (ver abaixo). */
+@theme static {
+  --color-bg: #232222;
+  --color-rail: #201f1f;
+  --color-panel: #232222;
+  --color-surface: #2e2e2e;
+  --color-card: #383737;
+  --color-active: #46393c;
+  --color-code: #232222;
+  --color-border: #414040;
+  --color-border-strong: #555454;
+  --color-divider: #393838;
+  --color-text: #d7cec8;
+  --color-text-strong: #eae2dc;
+  --color-text-soft: #c5c3c0;
+  --color-body: #d7cec8;
+  --color-quote: #b5b6b9;
+  --color-muted: #a3a8b4;
+  --color-faint: #9196a3;
+  --color-accent: #dd7b8f;
+  --color-accent-ink: #232222;
+  --color-danger: #ff7b7b;
+  --color-today: #403638;
+  --color-code-text: #d7cec8;
+  --color-syn-keyword: #ceaae6;
+  --color-syn-string: #a2c88b;
+  --color-syn-number: #f1bb90;
+  --color-syn-function: #98b7ec;
+  --color-syn-type: #f1ddad;
+
+  /* Matizes do Firelight (rosa → lilás), para títulos, estados e gráficos. */
+  --color-hue-rose: #dd7b8f;
+  --color-hue-ember: #eb8b86;
+  --color-hue-coral: #ed9d83;
+  --color-hue-apricot: #f1bb90;
+  --color-hue-honey: #f1ddad;
+  --color-hue-fern: #a2c88b;
+  --color-hue-verdigris: #81cfc3;
+  --color-hue-cornflower: #98b7ec;
+  --color-hue-lilac: #cac8ed;
+  --color-hue-orchid: #ceaae6;
+
+  /* Papéis do editor (derivados das matizes, como no Firelight). */
+  --color-h1: var(--color-hue-rose);
+  --color-h2: var(--color-hue-ember);
+  --color-h3: var(--color-hue-apricot);
+  --color-h4: var(--color-hue-honey);
+  --color-h5: var(--color-hue-verdigris);
+  --color-h6: var(--color-hue-cornflower);
+  --color-link: var(--color-hue-cornflower);
+  --color-tag-text: #c5c3c0;
+  --color-tag-bg: #383837;
+  --color-quote-bg: #383334;
+  --color-quote-bar: #9e5f6c;
+  --color-selection: #53535c;
+  --color-highlight: #6c6657;
+  --color-checkbox: #6a6a69;
+  --color-task-doing: var(--color-hue-apricot);
+  --color-task-moved: var(--color-hue-cornflower);
+  --color-task-event: var(--color-hue-verdigris);
+  --color-chart-humor: var(--color-hue-cornflower);
+  --color-chart-stress: var(--color-hue-coral);
+  --color-chart-temp: var(--color-hue-honey);
 }
 
 @theme inline {
-  --font-sans: var(--font-inter), system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+  --font-sans: var(--font-hanken-grotesk), "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-mono: var(--font-space-mono), ui-monospace, "SFMono-Regular", Consolas, monospace;
 }
 
-/* Tema claro: escolhido no app (data-theme="light") ou pelo sistema. */
+/* Tema claro: escolhido no app (data-theme="light") ou pelo sistema.
+   Paleta "Ash" do Firelight. As matizes foram escurecidas (mesmo tom) até
+   contraste ≥ 4.5:1 sobre o fundo da nota; as originais ficam ~3:1. */
 @layer base {
   :root[data-theme="light"] {
     color-scheme: light;
-    --color-bg: #f4f4f1;
-    --color-rail: #e9e9e5;
-    --color-panel: #efefeb;
-    --color-surface: #fbfbf9;
-    --color-card: #e6e6e1;
-    --color-active: #dcddd7;
-    --color-code: #efefea;
-    --color-border: #dadad3;
-    --color-border-strong: #c3c4bc;
-    --color-divider: #e3e3dd;
-    --color-text: #2b2d33;
-    --color-text-strong: #111216;
-    --color-text-soft: #4a4e58;
-    --color-body: #2b2d33;
-    --color-quote: #575c67;
-    --color-muted: #6b7080;
-    --color-faint: #9a9ea8;
-    --color-accent: #17806f;
-    --color-accent-ink: #ffffff;
-    --color-danger: #c2413a;
-    --color-today: #e1f1ed;
-    --color-code-text: #2f333b;
-    --color-syn-keyword: #17806f;
-    --color-syn-string: #a15c07;
-    --color-syn-number: #c2410c;
-    --color-syn-function: #2557d6;
-    --color-syn-type: #8a4b0f;
+    --color-bg: #fef8f6;
+    --color-rail: #faf4f2;
+    --color-panel: #fef8f6;
+    --color-surface: #f4eeec;
+    --color-card: #e6e0de;
+    --color-active: #ecd6d8;
+    --color-code: #fef8f6;
+    --color-border: #d7d3d2;
+    --color-border-strong: #b8b6b5;
+    --color-divider: #e3dedc;
+    --color-text: #473e36;
+    --color-text-strong: #3a3129;
+    --color-text-soft: #4c4946;
+    --color-body: #473e36;
+    --color-quote: #53545a;
+    --color-muted: #5c606d;
+    --color-faint: #676d7c;
+    --color-accent: #b83f5f;
+    --color-accent-ink: #fef8f6;
+    --color-danger: #d7162e;
+    --color-today: #eeddde;
+    --color-code-text: #473e36;
+    --color-syn-keyword: #9054ad;
+    --color-syn-string: #527334;
+    --color-syn-number: #906237;
+    --color-syn-function: #3e6abc;
+    --color-syn-type: #7c6a37;
+
+    --color-hue-rose: #b83f5f;
+    --color-hue-ember: #c13d3c;
+    --color-hue-coral: #ad5234;
+    --color-hue-apricot: #906237;
+    --color-hue-honey: #7c6a37;
+    --color-hue-fern: #527334;
+    --color-hue-verdigris: #1e776a;
+    --color-hue-cornflower: #3e6abc;
+    --color-hue-lilac: #69659d;
+    --color-hue-orchid: #9054ad;
+
+    --color-tag-text: #4c4946;
+    --color-tag-bg: #eae3e1;
+    --color-quote-bg: #f0e4e4;
+    --color-quote-bar: #ce7e92;
+    --color-selection: #dbd5de;
+    --color-highlight: #e3d4b2;
+    --color-checkbox: #9c9b9a;
   }
 }
 
@@ -102,4 +165,8 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans);
+}
+
+::selection {
+  background: var(--color-selection);
 }
