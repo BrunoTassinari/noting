@@ -233,7 +233,7 @@ function BacklinksPanel() {
       {!activeNote ? (
         <NoNote />
       ) : info ? (
-        <Backlinks items={info.backlinks} />
+        <Backlinks items={info.backlinks} noteId={activeNote.id} />
       ) : (
         <p className="text-xs text-muted">Carregando…</p>
       )}

@@ -71,6 +71,11 @@ export const editorTheme = EditorView.theme(
     },
     ".cm-link:hover, .cm-wikilink:hover": { textDecorationColor: c.link },
     ".cm-wikilink-raw, .cm-link-raw": { color: c.link },
+    // [[Link]] para nota que ainda não existe: mais apagado, como no Obsidian.
+    ".cm-wikilink-missing, .cm-wikilink-missing .cm-wikilink, .cm-wikilink-missing.cm-wikilink-raw": {
+      opacity: "0.6",
+      textDecorationStyle: "dashed",
+    },
     ".cm-tag": {
       color: "var(--color-tag-text)",
       backgroundColor: "var(--color-tag-bg)",

@@ -186,7 +186,7 @@ export function NoteView({
 
       <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)} title="Backlinks e tópicos">
         <div className="flex flex-col gap-6 pt-2">
-          <Backlinks items={note.backlinks ?? []} />
+          <Backlinks items={note.backlinks ?? []} noteId={note.id} />
           <Outline
             headings={headings}
             cursorLine={cursorLine}

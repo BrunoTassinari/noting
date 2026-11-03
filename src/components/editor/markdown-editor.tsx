@@ -12,6 +12,7 @@ import { bujoNote, bujoWidgets, type NoteInfo } from "./bujo-widgets";
 import { livePreview, taskToggle } from "./live-preview";
 import { editorHighlight, editorTheme } from "./theme";
 import { slashCommandSource } from "./slash-commands";
+import { missingLinks, refreshLinks, wrapSelectionInBrackets } from "./link-tools";
 import { wikilinkAutocomplete } from "./wikilink-autocomplete";
 
 /** O elemento está numa linha onde há cursor? (lá o clique é para editar) */
@@ -64,11 +65,18 @@ export default function MarkdownEditor({
   onReady,
 }: MarkdownEditorProps) {
   const host = useRef<HTMLDivElement>(null);
+  const viewRef = useRef<EditorView | null>(null);
   const callbacks = useRef({ onChange, onOpenWikilink, linkTargets, onCursorLine, note });
 
   useEffect(() => {
     callbacks.current = { onChange, onOpenWikilink, linkTargets, onCursorLine, note };
   });
+
+  // Lista de notas mudou (nota criada, renomeada): links "sem nota" mudam.
+  const linkNotes = linkTargets.notes;
+  useEffect(() => {
+    viewRef.current?.dispatch({ effects: refreshLinks.of(null) });
+  }, [linkNotes]);
 
   useEffect(() => {
     if (!host.current) return;
@@ -125,6 +133,8 @@ export default function MarkdownEditor({
           bujoNote.of(() => callbacks.current.note ?? null),
           bujoWidgets,
           wikilinkAutocomplete(() => callbacks.current.linkTargets, [slashCommandSource]),
+          missingLinks(() => ({ notes: callbacks.current.linkTargets.notes, fromPath: callbacks.current.note?.path ?? "" })),
+          wrapSelectionInBrackets,
           taskToggle,
           openLinks,
           EditorView.updateListener.of((u) => {
@@ -171,7 +181,11 @@ export default function MarkdownEditor({
         return true;
       },
     });
-    return () => view.destroy();
+    viewRef.current = view;
+    return () => {
+      viewRef.current = null;
+      view.destroy();
+    };
     // Não controlado: recria só se o componente remontar (troca de nota).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
