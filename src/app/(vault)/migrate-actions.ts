@@ -53,7 +53,12 @@ function itemsOf<T>(items: unknown, check: (x: Record<string, unknown>) => boole
 const validLineRef = (x: Record<string, unknown>) =>
   Number.isInteger(x.line) && (x.line as number) >= 0 && isLine(x.raw);
 
-async function run<T>(fn: (userId: string) => Promise<T>, opts = { refresh: true }): Promise<Result<T>> {
+/**
+ * Recarrega o layout (lista de notas) só quando uma nota foi criada
+ * (`created`): alterar o conteúdo não muda a árvore, e o cliente atualiza a
+ * data das notas alteradas localmente (notesChanged).
+ */
+async function run<T extends object>(fn: (userId: string) => Promise<T>): Promise<Result<T>> {
   const user = await requireUser();
   let value: T;
   try {
@@ -63,8 +68,8 @@ async function run<T>(fn: (userId: string) => Promise<T>, opts = { refresh: true
     console.error(err);
     return { ok: false, error: "Algo deu errado. Tente de novo." };
   }
-  // Notas criadas/alteradas: a árvore e os "recentes" mudam.
-  if (opts.refresh) refresh();
+  // Nota criada (destino que não existia): a árvore muda.
+  if ("created" in value && value.created) refresh();
   return { ok: true, ...value };
 }
 
@@ -84,14 +89,12 @@ export async function moveToDestinationAction(
       throw new NoteError("Linhas inválidas.");
     }
     const note = await writeToDestination(userId, originId, destOf(dest), dayOf(todayIso), lines);
-    return { dest: note };
+    return { dest: note, created: note.created };
   });
 }
 
 export async function loadMigrationAction(todayIso: string): Promise<Result<{ sources: MigrationSource[] }>> {
-  return run(async (userId) => ({ sources: await listMigration(userId, dayOf(todayIso)) }), {
-    refresh: false,
-  });
+  return run(async (userId) => ({ sources: await listMigration(userId, dayOf(todayIso)) }));
 }
 
 const ACTIONS = new Set(["today", "tomorrow", "month", "nextMonth", "backlog", "done", "cancel"]);
@@ -107,13 +110,16 @@ export async function migrateTasksAction(
       items,
       (x) => isUuid(String(x.noteId)) && validLineRef(x) && ACTIONS.has(String(x.action)),
     );
-    const changed = await migrateTasks(userId, today, valid);
-    return { changed, sources: await listMigration(userId, today) };
+    // A lista nova é lida junto com a migração (ver listMigration).
+    const migration = migrateTasks(userId, today, valid);
+    const sources = await listMigration(userId, today, migration.then((m) => m.bodies));
+    const { changed, created } = await migration;
+    return { changed, created, sources };
   });
 }
 
 export async function loadBacklogAction(): Promise<Result<{ backlog: Backlog }>> {
-  return run(async (userId) => ({ backlog: await getBacklog(userId) }), { refresh: false });
+  return run(async (userId) => ({ backlog: await getBacklog(userId) }));
 }
 
 export async function pullFromBacklogAction(
@@ -125,14 +131,13 @@ export async function pullFromBacklogAction(
     const d = destOf(dest);
     if (d === "backlog") throw new NoteError("Destino inválido.");
     const valid = itemsOf<{ line: number; raw: string }>(items, validLineRef);
-    const changed = await pullFromBacklog(userId, dayOf(todayIso), valid, d);
-    return { changed, backlog: await getBacklog(userId) };
+    const { changed, created, backlog } = await pullFromBacklog(userId, dayOf(todayIso), valid, d);
+    return { changed, created, backlog };
   });
 }
 
 export async function cleanBacklogAction(): Promise<Result<{ removed: number; noteId: string | null; backlog: Backlog }>> {
   return run(async (userId) => {
-    const res = await cleanBacklog(userId);
-    return { ...res, backlog: await getBacklog(userId) };
+    return cleanBacklog(userId);
   });
 }
