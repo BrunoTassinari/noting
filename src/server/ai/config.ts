@@ -4,9 +4,9 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { userSettings } from "@/db/schema";
 
-// Configuração do assistente: chave da API da Anthropic (de cada pessoa,
-// cifrada no banco) e modelo. Sem chave própria, usa ANTHROPIC_API_KEY do
-// servidor, se existir.
+// Configuração do assistente: chave da API da Anthropic e modelo, de cada
+// pessoa (chave cifrada no banco). Não há chave do servidor: quem não salvou
+// a própria chave não usa o assistente (ninguém gasta os tokens de outro).
 
 export const AI_MODELS = [
   { id: "claude-opus-5-5", label: "Claude Opus 5.5", hint: "Mais capaz · US$ 4 / 20 por milhão de tokens" },
@@ -46,8 +46,6 @@ function decrypt(packed: string): string | null {
 export type AiSettingsView = {
   /** Fim da chave salva ("…a1B2"), ou null. */
   keyHint: string | null;
-  /** O servidor tem ANTHROPIC_API_KEY (usada quando a pessoa não tem chave). */
-  serverKey: boolean;
   model: AiModel;
 };
 
@@ -64,7 +62,6 @@ export async function getAiSettings(userId: string): Promise<AiSettingsView> {
   const key = r?.aiKey ? decrypt(r.aiKey) : null;
   return {
     keyHint: key ? `…${key.slice(-4)}` : null,
-    serverKey: Boolean(process.env.ANTHROPIC_API_KEY),
     model: isModel(r?.aiModel) ? r.aiModel : DEFAULT_MODEL,
   };
 }
@@ -72,7 +69,7 @@ export async function getAiSettings(userId: string): Promise<AiSettingsView> {
 /** Chave e modelo para chamar a API (null = sem chave configurada). */
 export async function getAiConfig(userId: string): Promise<{ apiKey: string; model: AiModel } | null> {
   const r = await row(userId);
-  const apiKey = (r?.aiKey ? decrypt(r.aiKey) : null) ?? process.env.ANTHROPIC_API_KEY ?? null;
+  const apiKey = r?.aiKey ? decrypt(r.aiKey) : null;
   if (!apiKey) return null;
   return { apiKey, model: isModel(r?.aiModel) ? r.aiModel : DEFAULT_MODEL };
 }

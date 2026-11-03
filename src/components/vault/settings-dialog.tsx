@@ -77,7 +77,6 @@ function SettingsTabs({
 
 function AiForm({ onClose }: { onClose: () => void }) {
   const [keyHint, setKeyHint] = useState<string | null>(null);
-  const [serverKey, setServerKey] = useState(false);
   const [model, setModel] = useState(AI_MODELS[0].id);
   const [apiKey, setApiKey] = useState("");
   const [loaded, setLoaded] = useState(false);
@@ -91,7 +90,6 @@ function AiForm({ onClose }: { onClose: () => void }) {
       .then((r) => {
         if (r?.ok) {
           setKeyHint(r.settings.keyHint);
-          setServerKey(r.settings.serverKey);
           setModel(r.settings.model);
         }
         setLoaded(true);
@@ -141,8 +139,6 @@ function AiForm({ onClose }: { onClose: () => void }) {
             Remover
           </button>
         </div>
-      ) : serverKey ? (
-        <p className="text-xs text-muted">Sem chave própria: usando a chave do servidor.</p>
       ) : null}
       <form
         className="flex gap-2"

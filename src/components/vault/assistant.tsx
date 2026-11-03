@@ -177,7 +177,7 @@ export function Assistant({ compact = false }: { compact?: boolean }) {
   const checkReady = useCallback(() => {
     void loadAiSettingsAction()
       .catch(() => null)
-      .then((r) => setReady(r?.ok ? Boolean(r.settings.keyHint || r.settings.serverKey) : true));
+      .then((r) => setReady(r?.ok ? Boolean(r.settings.keyHint) : true));
   }, []);
 
   const open = useCallback(async (id: string | null) => {
