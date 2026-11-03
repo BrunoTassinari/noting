@@ -257,6 +257,26 @@ export function moveNote(userId: string, id: string, path: string) {
   return updateAndRelink(userId, id, { path: unwrap(validateFolder(path)) }, "move");
 }
 
+/**
+ * Renomear pasta: move cada nota da pasta (e das subpastas) para o caminho
+ * novo, reescrevendo os [[links]] como no mover. Uma nota por vez.
+ */
+export async function renameFolder(userId: string, from: string, to: string): Promise<{ updated: string[] }> {
+  const src = unwrap(validateFolder(from));
+  const dest = unwrap(validateFolder(to));
+  if (!src) throw new NoteError("Escolha uma pasta.");
+  if (dest === src) return { updated: [] };
+  if (dest.startsWith(`${src}/`)) throw new NoteError("Não dá para mover a pasta para dentro dela mesma.");
+  const inside = (await listNotes(userId)).filter((n) => n.path === src || n.path.startsWith(`${src}/`));
+  if (inside.length === 0) throw new NoteError("Pasta não encontrada.");
+  const updated = new Set<string>();
+  for (const n of inside) {
+    const res = await moveNote(userId, n.id, dest + n.path.slice(src.length));
+    res.updated.forEach((id) => updated.add(id));
+  }
+  return { updated: [...updated] };
+}
+
 /** Move a nota para a lixeira (dá para restaurar com o mesmo id). */
 export async function deleteNote(userId: string, id: string): Promise<void> {
   if (!isUuid(id)) throw new NoteError("Nota não encontrada.");
