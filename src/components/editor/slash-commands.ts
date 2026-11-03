@@ -7,7 +7,10 @@ import {
 } from "@codemirror/autocomplete";
 import { syntaxTree } from "@codemirror/language";
 import type { EditorView } from "@codemirror/view";
+import { loadNoteBody } from "@/components/vault/note-cache";
 import { dailyRef, refLink, today } from "@/lib/bujo";
+import type { NoteMeta } from "@/lib/note-paths";
+import { fillTemplate, TEMPLATES_FOLDER } from "@/lib/templates";
 
 // Menu do "/": digite "/" no começo da linha (ou depois de um espaço) para
 // ver comandos; continue digitando para filtrar ("/tar" → Tarefa).
@@ -114,6 +117,26 @@ const todayLink = () => {
 const BLOCKS: CompletionSection = { name: "Formatação", rank: 0 };
 const BUJO: CompletionSection = { name: "Bullet Journal", rank: 1 };
 const INSERT: CompletionSection = { name: "Inserir", rank: 2 };
+const TEMPLATES: CompletionSection = { name: "Templates", rank: 3 };
+
+/** Troca o "/comando" pelo template (variáveis preenchidas). */
+const insertTemplate = (id: string, title: () => string) =>
+  (view: EditorView, _c: Completion, from: number, to: number) => {
+    const typed = view.state.sliceDoc(from, to);
+    void loadNoteBody(id).then((body) => {
+      if (body === null) return;
+      // Só insere se o "/comando" ainda está lá (a pessoa não seguiu digitando).
+      if (view.state.sliceDoc(from, to) !== typed) return;
+      const text = fillTemplate(body, { title: title() });
+      view.dispatch({
+        changes: { from, to, insert: text },
+        selection: { anchor: from + text.length },
+        userEvent: "input.complete",
+        scrollIntoView: true,
+      });
+      view.focus();
+    });
+  };
 
 type Cmd = { label: string; detail?: string; keywords?: string; section: CompletionSection; apply: Completion["apply"] };
 
@@ -168,7 +191,14 @@ const COMMANDS: Cmd[] = [
 
 const fold = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
 
-export function slashCommandSource(ctx: CompletionContext): CompletionResult | null {
+export type SlashContext = () => { templates: NoteMeta[]; title: string };
+
+/** Fonte do menu "/" (com os templates da pasta Templates no fim). */
+export function slashCommandSource(get: SlashContext) {
+  return (ctx: CompletionContext) => slashCommands(ctx, get);
+}
+
+function slashCommands(ctx: CompletionContext, get: SlashContext): CompletionResult | null {
   const m = ctx.matchBefore(/(?:^|[\s(])\/[\p{L}\p{N} ]{0,24}$/u);
   if (!m || inCode(ctx)) return null;
   const slash = m.from + m.text.indexOf("/");
@@ -177,7 +207,26 @@ export function slashCommandSource(ctx: CompletionContext): CompletionResult | n
   if (/^\/\s/.test(ctx.state.sliceDoc(slash, ctx.pos))) return null;
 
   const words = query.split(/\s+/).filter(Boolean);
-  const options: Completion[] = COMMANDS.filter((c) => {
+  const { templates } = get();
+  const title = () => get().title;
+  const templateCmds: Cmd[] = templates.length
+    ? templates.map((t) => ({
+        label: t.title,
+        detail: "template",
+        keywords: `template modelo ${t.path}`,
+        section: TEMPLATES,
+        apply: insertTemplate(t.id, title),
+      }))
+    : [
+        {
+          label: "Template",
+          detail: `crie notas na pasta ${TEMPLATES_FOLDER}`,
+          keywords: "modelo",
+          section: TEMPLATES,
+          apply: insert(""),
+        },
+      ];
+  const options: Completion[] = [...COMMANDS, ...templateCmds].filter((c) => {
     const hay = fold(`${c.label} ${c.keywords ?? ""}`);
     return words.every((w) => hay.includes(w));
   }).map((c) => ({

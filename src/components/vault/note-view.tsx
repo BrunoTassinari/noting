@@ -34,7 +34,9 @@ import { Outline } from "./outline";
 import { Sheet } from "./sheet";
 import { Menu } from "./menu";
 import { cancelTasks, MigrateTaskSheet } from "./migrate-task";
-import { onNotesChanged, updateCachedBody } from "./note-cache";
+import { loadNoteBody, onNotesChanged, updateCachedBody } from "./note-cache";
+import { periodOf } from "@/lib/bujo";
+import { fillTemplate, isTemplate, listTemplates } from "@/lib/templates";
 import { PeriodicArrow, PeriodicNav, usePeriodicMenuItems } from "./periodic-nav";
 import { markEdited, whenCreated } from "./optimistic-note";
 import { TabHistoryNav } from "./tabs";
@@ -168,6 +170,9 @@ export function NoteView({
             />
             {status === "conflict" && (
               <ConflictBanner onLoad={loadServerVersion} onKeep={keepMine} />
+            )}
+            {!body.trim() && (
+              <TemplatePicker note={note} onPick={(text) => editorApi.current?.setText(text)} />
             )}
             <BodyEditor
               key={generation.n}
@@ -336,6 +341,37 @@ function TitleInput({
       }}
       className="mb-3 w-full bg-transparent text-[28px] font-semibold leading-tight text-text-strong outline-none md:text-[32px]"
     />
+  );
+}
+
+/** Nota vazia: oferece os templates da pasta Templates. */
+function TemplatePicker({ note, onPick }: { note: NoteMeta; onPick: (text: string) => void }) {
+  const { notes, showError } = useVault();
+  const [busy, setBusy] = useState<string | null>(null);
+  const templates = listTemplates(notes).filter((t) => t.id !== note.id);
+  if (templates.length === 0 || isTemplate(note) || periodOf(note)) return null;
+  const pick = async (id: string) => {
+    setBusy(id);
+    const body = await loadNoteBody(id);
+    setBusy(null);
+    if (body === null) return showError("Não foi possível abrir o template.");
+    onPick(fillTemplate(body, { title: note.title }));
+  };
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-1.5 text-[13px] text-muted">
+      <span className="mr-1">Começar com um template:</span>
+      {templates.slice(0, 12).map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          disabled={busy !== null}
+          onClick={() => void pick(t.id)}
+          className="h-9 rounded-lg border border-border px-3 text-text hover:bg-card disabled:opacity-50 md:h-7 md:px-2.5"
+        >
+          {busy === t.id ? "…" : t.title}
+        </button>
+      ))}
+    </div>
   );
 }
 

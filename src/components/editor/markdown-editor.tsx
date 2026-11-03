@@ -12,6 +12,7 @@ import { bujoNote, bujoWidgets, type NoteInfo } from "./bujo-widgets";
 import { livePreview, taskToggle } from "./live-preview";
 import { editorHighlight, editorTheme } from "./theme";
 import { slashCommandSource } from "./slash-commands";
+import { listTemplates } from "@/lib/templates";
 import { missingLinks, refreshLinks, wrapSelectionInBrackets } from "./link-tools";
 import { wikilinkAutocomplete } from "./wikilink-autocomplete";
 
@@ -49,6 +50,8 @@ export type EditorApi = {
    * se elas ainda forem `expected`. false = o texto mudou; nada foi feito.
    */
   replaceLines: (start: number, end: number, expected: string[], replacement: string[]) => boolean;
+  /** Troca o texto todo (ex.: aplicar um template numa nota vazia). */
+  setText: (text: string) => void;
 };
 
 /**
@@ -132,7 +135,12 @@ export default function MarkdownEditor({
           livePreview,
           bujoNote.of(() => callbacks.current.note ?? null),
           bujoWidgets,
-          wikilinkAutocomplete(() => callbacks.current.linkTargets, [slashCommandSource]),
+          wikilinkAutocomplete(() => callbacks.current.linkTargets, [
+            slashCommandSource(() => ({
+              templates: listTemplates(callbacks.current.linkTargets.notes),
+              title: callbacks.current.note?.title ?? "",
+            })),
+          ]),
           missingLinks(() => ({ notes: callbacks.current.linkTargets.notes, fromPath: callbacks.current.note?.path ?? "" })),
           wrapSelectionInBrackets,
           taskToggle,
@@ -165,6 +173,14 @@ export default function MarkdownEditor({
         // Seleção que termina no começo de uma linha não a inclui.
         if (to > from && to === last.from && last.number > first.number) last = doc.line(last.number - 1);
         return { lines: doc.toString().split("\n"), from: first.number - 1, to: last.number - 1 };
+      },
+      setText(text) {
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: text },
+          selection: { anchor: text.length },
+          scrollIntoView: true,
+        });
+        view.focus();
       },
       replaceLines(start, end, expected, replacement) {
         const { doc } = view.state;

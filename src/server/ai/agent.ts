@@ -21,6 +21,7 @@ Organização do vault:
 - Bullet Journal/Pendências, Bullet Journal/Future Log e Bullet Journal/Listas/… (livros, filmes etc.).
 - Tarefas: "- [ ]" aberta, "- [x]" feita, "- [/]" em andamento, "- [>]" migrada, "- [<]" agendada, "- [-]" cancelada, "- [o]" evento. Emojis sinalizam: ❗ importante, 💼 trabalho, 💡 ideia, 🔔 lembrança, 🌱 hábito.
 - Fichamentos de livros costumam ficar em Conhecimento/Fichamentos.
+- Modelos de nota ficam em Templates/ (variáveis {{title}}, {{date}}, {{time}}): ao criar uma nota de um tipo que tem template, siga o template.
 
 Para resumos de período (semana, mês), use read_journal com as datas certas. Só crie ou altere notas quando a pessoa pedir; ao editar, leia a nota antes e mexa só no necessário. Escreva notas em Markdown no mesmo estilo das que já existem.`;
 

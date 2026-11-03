@@ -9,7 +9,7 @@ import { syntaxTree } from "@codemirror/language";
 import type { EditorView } from "@codemirror/view";
 import { displayFolder, type NoteMeta, resolveWikilink } from "@/lib/note-paths";
 import { parseHeadings } from "@/lib/outline";
-import { getCachedNote, prefetchNote } from "@/components/vault/note-cache";
+import { loadNoteBody } from "@/components/vault/note-cache";
 
 const CODE_NODES = new Set(["InlineCode", "FencedCode", "CodeBlock", "CodeText"]);
 
@@ -30,14 +30,6 @@ const insertLink = (text: string) => (view: EditorView, _c: Completion, from: nu
     userEvent: "input.complete",
   });
 };
-
-/** Corpo de uma nota (do cache, ou buscado no servidor). */
-async function noteBody(id: string): Promise<string | null> {
-  const cached = getCachedNote(id);
-  if (cached) return cached.body;
-  await prefetchNote(id).catch(() => undefined);
-  return getCachedNote(id)?.body ?? null;
-}
 
 /**
  * Autocomplete de [[links]]:
@@ -93,7 +85,7 @@ export function wikilinkAutocomplete(
     const { notes, selfId } = getNotes();
     const note = target ? resolveWikilink(notes, target) : notes.find((n) => n.id === selfId);
     if (!note) return null;
-    const body = await noteBody(note.id);
+    const body = await loadNoteBody(note.id);
     if (body === null || ctx.aborted) return null;
     const options: Completion[] = parseHeadings(body).map((h) => ({
       label: h.text,

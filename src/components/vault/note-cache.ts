@@ -63,3 +63,9 @@ export function prefetchNote(id: string): Promise<void> {
   inflight.set(id, p);
   return p;
 }
+
+/** Corpo de uma nota (do cache recente, ou buscado no servidor); null se falhar. */
+export async function loadNoteBody(id: string): Promise<string | null> {
+  await prefetchNote(id);
+  return getCachedNote(id)?.body ?? null;
+}
