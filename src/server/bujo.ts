@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { notes } from "@/db/schema";
 import { FUTURE_LOG, migrateFutureLog, withMonthTasks, type Day, type NoteRef } from "@/lib/bujo";
@@ -19,21 +19,38 @@ export async function getOrCreateNote(
   template: string,
   id?: string,
 ): Promise<{ id: string; body: string; created: boolean }> {
-  const inserted = await db
-    .insert(notes)
-    .values({ id, userId, path: ref.path, title: ref.title, body: template })
-    .onConflictDoNothing()
-    .returning({ id: notes.id, body: notes.body });
-  if (inserted[0]) {
-    // Links do modelo e quem já apontava para este nome.
-    await rebuildLinks(db, userId, [inserted[0].id, ...(await mentionersOf(db, userId, ref.title))]);
-    return { ...inserted[0], created: true };
+  // Uma ida ao banco: insere se faltar, senão devolve a existente (o SELECT
+  // não enxerga a linha inserida pelo mesmo comando, então só um dos dois vem).
+  // Com `id` (o cliente já mostra a nota nova) é quase certo que vai criar:
+  // procura quem menciona o nome ao mesmo tempo, em vez de depois.
+  const early = id ? mentionersOf(db, userId, ref.title) : null;
+  early?.catch(() => {}); // se a nota já existia, ninguém espera por ela
+  const found = await db.execute<{ id: string; body: string; created: boolean }>(sql`
+    with ins as (
+      insert into notes (id, user_id, path, title, body)
+      values (${id ?? sql`gen_random_uuid()`}, ${userId}, ${ref.path}, ${ref.title}, ${template})
+      on conflict do nothing
+      returning id, body
+    )
+    select id, body, true as created from ins
+    union all
+    select id, body, false from notes
+    where user_id = ${userId} and path = ${ref.path} and title = ${ref.title}
+  `);
+  let row = found.rows[0];
+  if (!row) {
+    // Outro aparelho criou a mesma nota no mesmo instante (fora da foto do SELECT).
+    [row] = await db
+      .select({ id: notes.id, body: notes.body, created: sql<boolean>`false` })
+      .from(notes)
+      .where(and(eq(notes.userId, userId), eq(notes.path, ref.path), eq(notes.title, ref.title)));
   }
-  const [row] = await db
-    .select({ id: notes.id, body: notes.body })
-    .from(notes)
-    .where(and(eq(notes.userId, userId), eq(notes.path, ref.path), eq(notes.title, ref.title)));
-  return { ...row, created: false };
+  if (row.created) {
+    // Links do modelo e quem já apontava para este nome.
+    const mentioners = await (early ?? mentionersOf(db, userId, ref.title));
+    await rebuildLinks(db, userId, [row.id, ...mentioners], [{ id: row.id, path: ref.path, body: row.body }]);
+  }
+  return { id: row.id, body: row.body, created: row.created };
 }
 
 /**

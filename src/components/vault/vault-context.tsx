@@ -28,8 +28,10 @@ import {
   type NoteMeta,
 } from "@/lib/note-paths";
 import { makeExcerpt } from "@/lib/markdown-text";
+import { isoMonth, monthFromMonthly } from "@/lib/bujo";
+import { loadMonth } from "@/components/editor/bujo-month-store";
 import { ConfirmDialog, PromptDialog } from "./dialogs";
-import { forgetCachedNote, getCachedNote, updateCachedBody } from "./note-cache";
+import { forgetCachedNote, getCachedNote, onNotesChanged, updateCachedBody } from "./note-cache";
 import { ContextMenuHost } from "./context-menu";
 import { SearchPalette } from "./search-palette";
 import { addTab, pruneNotes } from "./tabs-store";
@@ -116,12 +118,26 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
     }
   }, [optimistic, params.id]);
 
-  // Saves recentes (o layout não é recarregado a cada autosave).
-  const [touched, setTouched] = useState<Record<string, { updatedAt: string; excerpt: string }>>({});
+  // Saves recentes (o layout não é recarregado a cada autosave) e notas
+  // alteradas por ações fora do editor (listas, migração…), que também não
+  // recarregam o layout: só a data muda na lista local.
+  const [touched, setTouched] = useState<Record<string, { updatedAt: string; excerpt?: string }>>({});
   const touchNote = useCallback((id: string, body: string) => {
     updateCachedBody(id, body);
     setTouched((t) => ({ ...t, [id]: { updatedAt: new Date().toISOString(), excerpt: makeExcerpt(body) } }));
   }, []);
+  useEffect(
+    () =>
+      onNotesChanged((ids) => {
+        const updatedAt = new Date().toISOString();
+        setTouched((t) => {
+          const next = { ...t };
+          for (const id of ids) next[id] = t[id]?.excerpt === undefined ? { updatedAt } : { ...t[id], updatedAt };
+          return next;
+        });
+      }),
+    [],
+  );
 
   // Árvore inclui a nota otimista enquanto o servidor não confirma.
   const allNotes = useMemo(() => {
@@ -207,7 +223,12 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
     (id: string) => {
       if (id === activeId) return;
       const meta = allNotes.find((n) => n.id === id);
-      if (meta) startOpeningNote(meta, getCachedNote(id));
+      if (!meta) return;
+      startOpeningNote(meta, getCachedNote(id));
+      // Nota do mês: os dados da tabela de hábitos/gráfico vêm de outra
+      // requisição; começa já, junto com a nota, em vez de depois do editor.
+      const month = monthFromMonthly(meta);
+      if (month) void loadMonth(isoMonth(month));
     },
     [activeId, allNotes],
   );

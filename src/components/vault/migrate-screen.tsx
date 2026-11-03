@@ -7,7 +7,7 @@ import { dailyHeading, isoDay, MONTHS, parseDay, today } from "@/lib/bujo";
 import { markdownToPlain } from "@/lib/markdown-text";
 import type { MigrationAction, MigrationItem, MigrationSource } from "@/server/migrate";
 import { destinationHint } from "./migrate-task";
-import { forgetCachedNote } from "./note-cache";
+import { notesChanged } from "./note-cache";
 import { NoteLink } from "./note-link";
 import { ScreenHeader } from "./screen-header";
 import { TaskActions, type TaskOption } from "./task-actions";
@@ -81,7 +81,7 @@ export function MigrateScreen() {
     try {
       const res = await migrateTasksAction(isoDay(today()), items);
       if (res.ok) {
-        res.changed.forEach(forgetCachedNote);
+        notesChanged(res.changed);
         setSources(res.sources);
         showError(message);
       } else {

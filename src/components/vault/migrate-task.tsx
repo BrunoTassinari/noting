@@ -11,7 +11,7 @@ import {
 } from "@/components/icons";
 import { addDays, addMonths, dailyRef, isoDay, monthlyRef, today } from "@/lib/bujo";
 import { destinationSpec, DESTINATIONS, type Destination, planMove, setTaskState } from "@/lib/migrate";
-import { forgetCachedNote } from "./note-cache";
+import { notesChanged } from "./note-cache";
 import { whenCreated } from "./optimistic-note";
 import { Sheet } from "./sheet";
 import { useVault } from "./vault-context";
@@ -112,7 +112,7 @@ export function MigrateTaskSheet({
         showError(res.error);
         return;
       }
-      forgetCachedNote(res.dest.id);
+      notesChanged([res.dest.id]);
       const n = plan.dest.length;
       if (api.replaceLines(plan.start, plan.end, expected, plan.origin)) {
         showError(`${n === 1 ? "1 linha migrada" : `${n} linhas migradas`} para ${res.dest.title}.`);

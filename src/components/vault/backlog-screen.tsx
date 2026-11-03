@@ -8,7 +8,7 @@ import { markdownToPlain } from "@/lib/markdown-text";
 import type { Destination } from "@/lib/migrate";
 import type { Backlog } from "@/server/migrate";
 import { destinationHint } from "./migrate-task";
-import { forgetCachedNote } from "./note-cache";
+import { notesChanged } from "./note-cache";
 import { NoteLink } from "./note-link";
 import { ScreenHeader } from "./screen-header";
 import { TaskActions, type TaskOption } from "./task-actions";
@@ -62,7 +62,7 @@ export function BacklogScreen() {
     try {
       const res = await pullFromBacklogAction(isoDay(today()), [{ line, raw }], dest);
       if (res.ok) {
-        res.changed.forEach(forgetCachedNote);
+        notesChanged(res.changed);
         setBacklog(res.backlog);
         showError(PULLED[dest]);
       } else {
@@ -81,7 +81,7 @@ export function BacklogScreen() {
     try {
       const res = await cleanBacklogAction();
       if (res.ok) {
-        if (res.noteId) forgetCachedNote(res.noteId);
+        if (res.noteId) notesChanged([res.noteId]);
         setBacklog(res.backlog);
         showError(
           res.removed === 0

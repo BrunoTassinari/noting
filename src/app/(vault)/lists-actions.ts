@@ -1,6 +1,5 @@
 "use server";
 
-import { refresh } from "next/cache";
 import { isOpenState, newItemLine, parseItem, RATING_RE, setItemEvaluation, setItemState } from "@/lib/lists";
 import { isUuid } from "@/lib/note-paths";
 import { requireUser } from "@/lib/session";
@@ -44,7 +43,9 @@ function refOf(ref: unknown): LineRef {
   return { noteId: String(r.noteId), line: r.line as number, raw: r.raw };
 }
 
-async function run<T>(fn: (userId: string) => Promise<T>, opts = { refresh: true }): Promise<Result<T>> {
+// Nenhuma ação daqui cria nota: não recarregam o layout (lista de notas). O
+// cliente esquece o cache das notas alteradas e atualiza a data delas.
+async function run<T>(fn: (userId: string) => Promise<T>): Promise<Result<T>> {
   const user = await requireUser();
   let value: T;
   try {
@@ -54,7 +55,6 @@ async function run<T>(fn: (userId: string) => Promise<T>, opts = { refresh: true
     console.error(err);
     return { ok: false, error: "Algo deu errado. Tente de novo." };
   }
-  if (opts.refresh) refresh();
   return { ok: true, ...value };
 }
 
@@ -65,7 +65,7 @@ const selectedOf = (id: unknown) => (typeof id === "string" && isUuid(id) ? id :
 const LIST_STATES = new Set<TaskState>([" ", "/", "x", "-"]);
 
 export async function loadListsAction(selected: string | null): Promise<Result<{ data: ListsPayload }>> {
-  return run(async (userId) => ({ data: await getLists(userId, selectedOf(selected)) }), { refresh: false });
+  return run(async (userId) => ({ data: await getLists(userId, selectedOf(selected)) }));
 }
 
 export type ItemPatch = {
@@ -88,7 +88,8 @@ export async function updateListItemAction(ref: LineRef, patch: ItemPatch): Prom
       if (rating !== null && !RATING_RE.test(rating)) throw new NoteError("A nota deve ser um número, como 8 ou 9.5.");
       comment = shortText(evaluation?.comment, "Comentário");
     }
-    await editNoteLine(
+    // A lista atualizada é lida junto com a gravação (ver PendingEdit).
+    const body = editNoteLine(
       userId,
       r.noteId,
       r.line,
@@ -101,7 +102,7 @@ export async function updateListItemAction(ref: LineRef, patch: ItemPatch): Prom
       },
       { onlyLists: true },
     );
-    return { data: await getLists(userId, r.noteId) };
+    return { data: await getLists(userId, r.noteId, { id: r.noteId, body }) };
   });
 }
 
@@ -119,8 +120,8 @@ export async function addListItemAction(
     const line = newItemLine(t, state, buy === true);
     // O título não pode virar outra coisa (ex.: começar com outro checkbox).
     if (parseItem(line)?.state !== state) throw new NoteError("Título inválido.");
-    await addItem(userId, noteId, line);
-    return { data: await getLists(userId, noteId) };
+    const body = addItem(userId, noteId, line);
+    return { data: await getLists(userId, noteId, { id: noteId, body }) };
   });
 }
 
@@ -146,7 +147,7 @@ export async function studyNoteAction(listId: string, itemTitle: string): Promis
 // ---------- Sinalizadores ----------
 
 export async function loadSignalsAction(): Promise<Result<{ sources: SignalSource[] }>> {
-  return run(async (userId) => ({ sources: await listSignals(userId) }), { refresh: false });
+  return run(async (userId) => ({ sources: await listSignals(userId) }));
 }
 
 /** Conclui ([x]) ou cancela ([-]) uma tarefa sinalizada ainda aberta. */
@@ -157,10 +158,10 @@ export async function resolveSignalAction(
   return run(async (userId) => {
     const r = refOf(ref);
     if (action !== "done" && action !== "cancel") throw new NoteError("Ação inválida.");
-    await editNoteLine(userId, r.noteId, r.line, r.raw, (raw) => {
+    const body = editNoteLine(userId, r.noteId, r.line, r.raw, (raw) => {
       const p = parseItem(raw);
       return p && isOpenState(p.state) ? setItemState(raw, action === "done" ? "x" : "-") : null;
     });
-    return { sources: await listSignals(userId) };
+    return { sources: await listSignals(userId, { id: r.noteId, body }) };
   });
 }

@@ -28,6 +28,7 @@ import { openContextMenu, openMenuAt, useLongPress } from "./context-menu";
 import { Tree, useNoteMenu } from "./sidebar";
 import { usePeriodicNotes } from "./use-periodic";
 import { BUJO_SCREENS } from "./bujo-screens";
+import { useExcerpts, useIsMobile } from "./use-excerpts";
 import { useVault } from "./vault-context";
 
 /** Tela "Notas" do celular (artboard Mobile · arquivos). */
@@ -36,6 +37,8 @@ export function MobileHome() {
   const { notes, creating, createNote, openNewFolder, openSearch } = useVault();
   const { openPeriodic } = usePeriodicNotes();
   const [tab, setTab] = useState<"recent" | "folders" | "backlog" | "lists">("recent");
+  // Resumos vêm à parte (não estão no layout), só quando a lista aparece.
+  const excerpts = useExcerpts(useIsMobile() && tab === "recent");
   const recent = useMemo(
     () => [...notes].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
     [notes],
@@ -167,7 +170,7 @@ export function MobileHome() {
         ) : tab === "recent" ? (
           <ul>
             {recent.map((n) => (
-              <RecentRow key={n.id} note={n} />
+              <RecentRow key={n.id} note={n} excerpt={n.excerpt ?? excerpts[n.id]} />
             ))}
           </ul>
         ) : (
@@ -222,7 +225,7 @@ export function MobileHome() {
 }
 
 /** Nota na lista "Recentes": toque abre; toque longo ou "…" mostra as ações. */
-function RecentRow({ note }: { note: NoteMeta }) {
+function RecentRow({ note, excerpt }: { note: NoteMeta; excerpt?: string }) {
   const items = useNoteMenu(note);
   const press = useLongPress((at) => openContextMenu(at, items, note.title));
   return (
@@ -247,7 +250,7 @@ function RecentRow({ note }: { note: NoteMeta }) {
             {relativeTime(note.updatedAt)}
           </span>
         </div>
-        {note.excerpt && <p className="mt-0.5 line-clamp-2 text-sm leading-[1.45] text-quote">{note.excerpt}</p>}
+        {excerpt && <p className="mt-0.5 line-clamp-2 text-sm leading-[1.45] text-quote">{excerpt}</p>}
         <div className="mt-1 truncate text-xs text-accent">{displayFolder(note.path)}</div>
       </NoteLink>
       <button

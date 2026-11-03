@@ -4,7 +4,9 @@ import { db } from "@/db";
 import type { DbLike } from "@/db/link-index";
 import { notes, trash } from "@/db/schema";
 import { makeExcerpt } from "@/lib/markdown-text";
+import { sha256Hex } from "@/lib/hash";
 import { type RelinkChange, rewriteLinks } from "@/lib/relink";
+import { sameWikilinkTargets } from "@/lib/wikilinks";
 import { linkersOf, mentionersOf, rebuildLinks } from "./links";
 import {
   DEFAULT_TITLE,
@@ -54,13 +56,31 @@ function unwrap<T>(r: { value: T } | { error: string }): T {
   return r.value;
 }
 
+/**
+ * Lista de notas do layout (árvore, busca por nome, links). Sem o corpo nem
+ * resumo: vai inteira para o navegador a cada carregamento e refresh.
+ */
 export async function listNotes(userId: string): Promise<NoteMeta[]> {
   const rows = await db
-    .select({ ...metaColumns, head: sql<string>`left(${notes.body}, 600)` })
+    .select(metaColumns)
     .from(notes)
     .where(eq(notes.userId, userId))
     .orderBy(asc(notes.path), asc(notes.title));
-  return rows.map((r) => ({ ...toMeta(r), excerpt: makeExcerpt(r.head) }));
+  return rows.map(toMeta);
+}
+
+/** Resumo do começo de cada nota (lista "Recentes" do celular). */
+export async function listExcerpts(userId: string): Promise<Record<string, string>> {
+  const rows = await db
+    .select({ id: notes.id, head: sql<string>`left(${notes.body}, 600)` })
+    .from(notes)
+    .where(eq(notes.userId, userId));
+  const out: Record<string, string> = {};
+  for (const r of rows) {
+    const excerpt = makeExcerpt(r.head);
+    if (excerpt) out[r.id] = excerpt;
+  }
+  return out;
 }
 
 export async function getNote(userId: string, id: string): Promise<NoteFull | null> {
@@ -113,12 +133,14 @@ export async function createNote(
   let title = base;
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
-      const [row] = await db
-        .insert(notes)
-        .values({ id: input.id, userId, path, title })
-        .returning(metaColumns);
+      // Em paralelo (uma ida ao banco a menos): a nota é nova e vazia, então
+      // quem a menciona já menciona antes de ela existir.
+      const [[row], mentioners] = await Promise.all([
+        db.insert(notes).values({ id: input.id, userId, path, title }).returning(metaColumns),
+        mentionersOf(db, userId, title),
+      ]);
       // [[links]] que já apontavam para este nome passam a valer.
-      await rebuildLinks(db, userId, await mentionersOf(db, userId, row.title));
+      await rebuildLinks(db, userId, mentioners);
       return toMeta(row);
     } catch (err) {
       if (uniqueConstraint(err) !== "notes_unique_title_per_folder") throw err;
@@ -160,8 +182,53 @@ export async function updateNoteBody(
     if (baseHash && (await getNote(userId, id))) return { ok: false, conflict: true };
     throw new NoteError("Nota não encontrada.");
   }
-  if (relink) await rebuildLinks(db, userId, [id]);
+  if (relink) await rebuildLinks(db, userId, [id], [{ id, path: row.path, body }]);
   return { ok: true, meta: toMeta(row) };
+}
+
+export type BodyChange = { id: string; path: string; before: string; after: string };
+
+/**
+ * Grava vários corpos de uma vez, só se NENHUM mudou desde que foi lido
+ * (compara o hash do corpo atual com o de `before`): tudo ou nada, num único
+ * comando. Substitui uma transação com FOR UPDATE (BEGIN, SELECT, UPDATEs,
+ * COMMIT: uma ida ao banco cada) por uma ida só. false = alguma nota mudou
+ * (ou sumiu) no meio; quem chama relê e tenta de novo.
+ * Depois refaz a tabela links das notas cujos [[links]] mudaram.
+ */
+export async function saveBodiesIfUnchanged(userId: string, changes: BodyChange[]): Promise<boolean> {
+  if (changes.length === 0) return true;
+  const rows = await Promise.all(
+    changes.map(async (c) => ({ id: c.id, body: c.after, base: (await sha256Hex(c.before)) ?? "" })),
+  );
+  // `travadas` trava as linhas (e relê a versão mais nova de cada uma); só se
+  // todas ainda têm o hash esperado o UPDATE grava alguma coisa.
+  const res = await db.execute(sql`
+    with v as (
+      select * from json_to_recordset(${JSON.stringify(rows)}::json) as v(id uuid, body text, base text)
+    ), travadas as (
+      select n.id, n.body from notes n
+      where n.user_id = ${userId} and n.id in (select id from v)
+      order by n.id
+      for update
+    ), confere as (
+      select count(*) = (select count(*) from v) as ok
+      from travadas t join v on v.id = t.id
+      where encode(sha256(convert_to(t.body, 'UTF8')), 'hex') = v.base
+    )
+    update notes n set body = v.body, updated_at = now()
+    from v, confere
+    where confere.ok and n.id = v.id and n.user_id = ${userId}
+  `);
+  if ((res.rowCount ?? 0) !== changes.length) return false;
+  const relink = changes.filter((c) => !sameWikilinkTargets(c.before, c.after));
+  await rebuildLinks(
+    db,
+    userId,
+    relink.map((c) => c.id),
+    relink.map((c) => ({ id: c.id, path: c.path, body: c.after })),
+  );
+  return true;
 }
 
 /**
@@ -177,7 +244,7 @@ export async function saveConflictCopy(userId: string, id: string, body: string)
     .insert(notes)
     .values({ userId, path: original.path, title, body })
     .returning(metaColumns);
-  await rebuildLinks(db, userId, [row.id]);
+  await rebuildLinks(db, userId, [row.id], [{ id: row.id, path: row.path, body }]);
   return toMeta(row);
 }
 
