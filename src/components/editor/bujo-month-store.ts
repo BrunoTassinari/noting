@@ -15,6 +15,10 @@ type Listener = (source: object | null) => void;
 const states = new Map<string, MonthState>();
 const listeners = new Map<string, Set<Listener>>();
 const inflight = new Map<string, Promise<void>>();
+const loadedAt = new Map<string, number>();
+
+/** Busca feita há menos que isso é reaproveitada (ex.: adiantada no clique). */
+const FRESH_MS = 3_000;
 
 export const getMonthState = (month: string): MonthState | null => states.get(month) ?? null;
 
@@ -37,6 +41,7 @@ export function loadMonth(month: string): Promise<void> {
   const running = inflight.get(month);
   if (running) return running;
   const prev = states.get(month);
+  if (prev?.status === "ready" && Date.now() - (loadedAt.get(month) ?? 0) < FRESH_MS) return Promise.resolve();
   if (!prev || prev.status === "error") {
     states.set(month, { status: "loading", data: prev?.data ?? null });
     notify(month, null);
@@ -46,6 +51,7 @@ export function loadMonth(month: string): Promise<void> {
       if (!res.ok) throw new Error(String(res.status));
       const data = (await res.json()) as MonthData;
       states.set(month, { status: "ready", data });
+      loadedAt.set(month, Date.now());
     })
     .catch(() => {
       const data = states.get(month)?.data ?? null;

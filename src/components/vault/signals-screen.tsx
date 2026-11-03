@@ -10,7 +10,7 @@ import { relativeTime } from "@/lib/relative-time";
 import { TASK_LABELS } from "@/lib/tasks";
 import type { SignalSource } from "@/server/lists";
 import { StateBox } from "./list-state";
-import { forgetCachedNote } from "./note-cache";
+import { notesChanged } from "./note-cache";
 import { NoteLink } from "./note-link";
 import { ScreenHeader } from "./screen-header";
 import { TaskActions, type TaskOption } from "./task-actions";
@@ -76,7 +76,7 @@ export function SignalsScreen() {
     try {
       const res = await resolveSignalAction({ noteId: source.noteId, line: item.line, raw: item.raw }, action);
       if (res.ok) {
-        forgetCachedNote(source.noteId);
+        notesChanged([source.noteId]);
         setSources(res.sources);
         showError(DONE_MESSAGE[action]);
       } else {

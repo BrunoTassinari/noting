@@ -1,6 +1,6 @@
 import { type EditorView, WidgetType } from "@codemirror/view";
 import { setDayHabitAction, setDayValueAction } from "@/app/(vault)/bujo-actions";
-import { forgetCachedNote } from "@/components/vault/note-cache";
+import { notesChanged } from "@/components/vault/note-cache";
 import { day, isoDay, MONTHS, today, WEEKDAYS_SHORT } from "@/lib/bujo";
 import {
   asNumber,
@@ -224,7 +224,7 @@ class DayRow {
     }
     this.pending--;
     if (res.ok) {
-      forgetCachedNote(res.id); // a nota diária mudou fora do editor
+      notesChanged([res.id]); // a nota diária mudou fora do editor
       patchDay(this.table.month, this.d, { ...res.data, id: res.id }, this.table);
       if (this.pending === 0) this.sync(res.data, true);
     } else {

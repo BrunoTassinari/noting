@@ -30,6 +30,22 @@ export function forgetCachedNote(id: string) {
   cache.delete(id);
 }
 
+// Notas alteradas no servidor por uma ação fora do editor (listas, migração,
+// sinalizadores…). Em vez de recarregar o layout inteiro (lista de notas),
+// a ação só avisa aqui; o vault atualiza a data delas na lista local.
+const changeListeners = new Set<(ids: string[]) => void>();
+
+export function onNotesChanged(listener: (ids: string[]) => void): () => void {
+  changeListeners.add(listener);
+  return () => changeListeners.delete(listener);
+}
+
+/** Esquece o cache e marca as notas como alteradas agora. */
+export function notesChanged(ids: string[]) {
+  ids.forEach(forgetCachedNote);
+  if (ids.length > 0) changeListeners.forEach((l) => l(ids));
+}
+
 /** Busca a nota em segundo plano (intenção de abrir: mouse em cima, toque). */
 export function prefetchNote(id: string): Promise<void> {
   const entry = cache.get(id);

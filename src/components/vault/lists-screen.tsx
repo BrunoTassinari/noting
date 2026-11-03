@@ -15,7 +15,7 @@ import { markdownToPlain } from "@/lib/markdown-text";
 import type { TaskState } from "@/lib/tasks";
 import type { ListsPayload } from "@/server/lists";
 import { StateBox } from "./list-state";
-import { forgetCachedNote } from "./note-cache";
+import { notesChanged } from "./note-cache";
 import { NoteLink } from "./note-link";
 import { ScreenHeader } from "./screen-header";
 import { Sheet } from "./sheet";
@@ -106,7 +106,7 @@ export function ListsScreen() {
     try {
       const res = await fn();
       if (res.ok) {
-        forgetCachedNote(id);
+        notesChanged([id]);
         setData(res.data);
         if (message) showError(message);
         return true;

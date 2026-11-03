@@ -1,5 +1,5 @@
 import { addMediaAction, addMemorableDayAction } from "@/app/(vault)/bujo-actions";
-import { forgetCachedNote } from "@/components/vault/note-cache";
+import { notesChanged } from "@/components/vault/note-cache";
 import { type Day, isoDay, MONTHS, WEEKDAYS_SHORT } from "@/lib/bujo";
 import { MEDIA_KINDS, type MediaKind } from "@/lib/bujo-data";
 import { el, icon } from "./bujo-dom";
@@ -87,7 +87,7 @@ function openDialog(opts: {
       error.hidden = false;
       return;
     }
-    forgetCachedNote(res.id); // a nota do mês mudou fora do editor
+    notesChanged([res.id]); // a nota do mês mudou fora do editor
     close();
     opts.onDone();
   });
