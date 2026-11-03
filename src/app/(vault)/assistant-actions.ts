@@ -5,6 +5,7 @@ import { type DisplayItem, toDisplay } from "@/lib/ai-display";
 import { requireUser } from "@/lib/session";
 import { type ChatMeta, deleteChat, getChat, listChats } from "@/server/ai/chats";
 import { type AiSettingsView, getAiSettings, saveAiSettings } from "@/server/ai/config";
+import { createConnectorToken, hasConnectorToken, revokeConnectorToken } from "@/server/ai/connector";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -57,4 +58,21 @@ export async function saveAiSettingsAction(input: {
     return { ok: false, error: err instanceof Error ? err.message : "Não foi possível salvar." };
   }
   return { ok: true, settings: await getAiSettings(user.id) };
+}
+
+export async function connectorStatusAction(): Promise<Result<{ active: boolean }>> {
+  const user = await requireUser();
+  return { ok: true, active: await hasConnectorToken(user.id) };
+}
+
+/** Cria (ou troca) o token do conector; o token só aparece nesta resposta. */
+export async function createConnectorTokenAction(): Promise<Result<{ token: string }>> {
+  const user = await requireUser();
+  return { ok: true, token: await createConnectorToken(user.id) };
+}
+
+export async function revokeConnectorTokenAction(): Promise<Result<object>> {
+  const user = await requireUser();
+  await revokeConnectorToken(user.id);
+  return { ok: true };
 }

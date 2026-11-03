@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { loadAiSettingsAction, saveAiSettingsAction } from "@/app/(vault)/assistant-actions";
+import {
+  connectorStatusAction,
+  createConnectorTokenAction,
+  loadAiSettingsAction,
+  revokeConnectorTokenAction,
+  saveAiSettingsAction,
+} from "@/app/(vault)/assistant-actions";
 import { saveHabitsAction } from "@/app/(vault)/settings-actions";
 import { ArrowLeftIcon, ArrowRightIcon, CloseIcon, PlusIcon } from "@/components/icons";
 import { isoDay, MONTHS, today } from "@/lib/bujo";
@@ -44,14 +50,15 @@ function SettingsTabs({
   onClose: () => void;
   onSaved: (monthNoteId: string | null) => void;
 }) {
-  const [tab, setTab] = useState<"habits" | "ai">("habits");
+  const [tab, setTab] = useState<"habits" | "claude" | "ai">("habits");
   return (
     <>
       <div role="tablist" aria-label="Seções" className="mb-4 flex gap-1 rounded-lg bg-rail p-1">
         {(
           [
             ["habits", "Hábitos"],
-            ["ai", "Assistente"],
+            ["claude", "Conector Claude"],
+            ["ai", "Chave da API"],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -68,10 +75,124 @@ function SettingsTabs({
       </div>
       {tab === "habits" ? (
         <HabitsForm initial={habits} onCancel={onClose} onSaved={onSaved} />
+      ) : tab === "claude" ? (
+        <ConnectorForm onClose={onClose} />
       ) : (
         <AiForm onClose={onClose} />
       )}
     </>
+  );
+}
+
+/** Conector MCP: o app do Claude (com a assinatura) lê e edita as notas. */
+function ConnectorForm({ onClose }: { onClose: () => void }) {
+  const [active, setActive] = useState<boolean | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
+  const url = typeof window === "undefined" ? "" : `${window.location.origin}/api/mcp`;
+
+  useEffect(() => {
+    void connectorStatusAction()
+      .catch(() => null)
+      .then((r) => setActive(r?.ok ? r.active : false));
+  }, []);
+
+  const create = async () => {
+    if (active && !window.confirm("Gerar um token novo? O atual para de funcionar no Claude.")) return;
+    setBusy(true);
+    const r = await createConnectorTokenAction().catch(() => null);
+    setBusy(false);
+    if (r?.ok) {
+      setToken(r.token);
+      setActive(true);
+    }
+  };
+  const revoke = async () => {
+    if (!window.confirm("Desligar o conector? O Claude deixa de ver suas notas.")) return;
+    setBusy(true);
+    await revokeConnectorTokenAction().catch(() => null);
+    setBusy(false);
+    setToken(null);
+    setActive(false);
+  };
+  const copy = (label: string, text: string) => {
+    void navigator.clipboard?.writeText(text).then(() => {
+      setCopied(label);
+      setTimeout(() => setCopied(null), 1500);
+    });
+  };
+
+  const field = (label: string, value: string) => (
+    <div>
+      <div className="mb-1 text-xs text-muted">{label}</div>
+      <div className="flex gap-2">
+        <code className="min-w-0 flex-1 truncate rounded-lg border border-border bg-rail px-3 py-2 font-mono text-xs leading-5 text-text">
+          {value}
+        </code>
+        <button type="button" onClick={() => copy(label, value)} className={`${buttonBase} border border-border text-text hover:bg-card`}>
+          {copied === label ? "Copiado" : "Copiar"}
+        </button>
+      </div>
+    </div>
+  );
+
+  if (active === null) return <p className="py-4 text-[13px] text-muted">Carregando…</p>;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <h3 className="text-sm font-semibold text-text">Usar as notas no Claude</h3>
+        <p className="mt-0.5 text-xs leading-normal text-muted">
+          Converse no claude.ai, no app do Claude ou no Claude Code (com a sua assinatura, sem custo extra) e ele busca,
+          lê e, se você pedir, edita suas notas.
+        </p>
+      </div>
+
+      {token ? (
+        <>
+          {field("Endereço (URL do servidor)", url)}
+          {field("Token (aparece só agora: guarde)", token)}
+          <ol className="list-decimal space-y-1 pl-5 text-xs leading-normal text-text-soft">
+            <li>
+              No claude.ai: <b>Configurações › Conectores › Adicionar conector personalizado</b>.
+            </li>
+            <li>Nome: Noting. URL: o endereço acima.</li>
+            <li>
+              Em autenticação, escolha enviar um cabeçalho: <span className="font-mono">Authorization</span> ={" "}
+              <span className="font-mono">Bearer</span> + espaço + o token. Se não houver essa opção, use como URL o
+              endereço com token (abaixo) e &ldquo;Sem login&rdquo;.
+            </li>
+            <li>Numa conversa, ative o Noting no menu de ferramentas e pergunte sobre suas notas.</li>
+          </ol>
+          {field("Endereço com token (se não houver opção de cabeçalho)", `${url}?token=${token}`)}
+          {field(
+            "Claude Code (terminal)",
+            `claude mcp add --transport http noting ${url} --header "Authorization: Bearer ${token}"`,
+          )}
+        </>
+      ) : active ? (
+        <p className="rounded-lg border border-border bg-rail px-3 py-2 text-[13px] text-text">
+          Conector ligado. O token só aparece quando é criado; se perdeu, gere outro (o antigo para de valer).
+        </p>
+      ) : (
+        <p className="text-[13px] text-text-soft">Gere um token para ligar o conector.</p>
+      )}
+
+      <div className="flex flex-wrap justify-end gap-2">
+        {active && (
+          <button type="button" disabled={busy} onClick={() => void revoke()} className={`${buttonBase} text-danger hover:bg-card`}>
+            Desligar
+          </button>
+        )}
+        <button type="button" onClick={onClose} className={`${buttonBase} text-text-soft hover:bg-card`}>
+          Fechar
+        </button>
+        <button type="button" disabled={busy} onClick={() => void create()} className={`${buttonBase} bg-accent text-accent-ink`}>
+          {busy ? "Gerando…" : active ? "Gerar novo token" : "Gerar token"}
+        </button>
+      </div>
+    </div>
   );
 }
 

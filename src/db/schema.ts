@@ -201,6 +201,8 @@ export const userSettings = pgTable("user_settings", {
   aiKey: text("ai_key"),
   /** Modelo do assistente (id da API); null = padrão. */
   aiModel: text("ai_model"),
+  /** SHA-256 do token do conector MCP (o app do Claude lê as notas com ele). */
+  mcpTokenHash: text("mcp_token_hash").unique(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()
