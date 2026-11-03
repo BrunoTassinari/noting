@@ -359,3 +359,51 @@ export function MonitorIcon(props: IconProps) {
     </Base>
   );
 }
+
+export function ArrowRightIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </Base>
+  );
+}
+
+/** Mostrar/recolher a lateral esquerda. */
+export function SidebarLeftIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+      <path d="M9.5 4.5v15" />
+    </Base>
+  );
+}
+
+/** Mostrar/recolher a lateral direita. */
+export function SidebarRightIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+      <path d="M14.5 4.5v15" />
+    </Base>
+  );
+}
+
+/** Abrir em nova aba (do app). */
+export function TabNewIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5" />
+      <path d="M4 8h16" />
+      <path d="M7 13v7M3.5 16.5h7" />
+    </Base>
+  );
+}
+
+/** Recolher todas as pastas. */
+export function CollapseIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="m7 20 5-5 5 5M7 4l5 5 5-5" />
+    </Base>
+  );
+}
