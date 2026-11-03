@@ -37,7 +37,9 @@ navegador do PC e no celular (PWA).
    (**Storage → Neon**), que preenche `DATABASE_URL` sozinha.
 3. Em **Settings → Environment Variables**, defina `DATABASE_URL`,
    `BETTER_AUTH_SECRET` (gere um novo, diferente do local) e
-   `BETTER_AUTH_URL` (ex.: `https://seu-app.vercel.app`).
+   `BETTER_AUTH_URL` (ex.: `https://seu-app.vercel.app`). Opcional:
+   `SIGNUP_CODE`, um código de convite que libera "Criar conta" na tela de
+   login (sem ela, o cadastro fica desligado).
 4. Aplique as migrations e crie o usuário no banco de produção, rodando
    localmente com o `DATABASE_URL` de produção:
 
