@@ -9,12 +9,13 @@ import {
   CalendarWeekIcon,
   FolderPlusIcon,
   LogoutIcon,
+  MoreIcon,
   NoteIcon,
   PlusIcon,
   SearchIcon,
   SlidersIcon,
 } from "@/components/icons";
-import { displayFolder } from "@/lib/note-paths";
+import { displayFolder, type NoteMeta } from "@/lib/note-paths";
 import { relativeTime } from "@/lib/relative-time";
 import { NEXT_THEME, setThemePref, THEME_LABEL, useThemePref } from "@/components/theme";
 import { Menu } from "./menu";
@@ -22,7 +23,8 @@ import { BacklogQuick, ListsQuick } from "./sidebar-quick";
 import { ThemeIcon } from "./theme-button";
 import { prefetchNote } from "./note-cache";
 import { NoteLink } from "./note-link";
-import { Tree } from "./sidebar";
+import { openContextMenu, openMenuAt, useLongPress } from "./context-menu";
+import { Tree, useNoteMenu } from "./sidebar";
 import { usePeriodicNotes } from "./use-periodic";
 import { BUJO_SCREENS } from "./bujo-screens";
 import { useVault } from "./vault-context";
@@ -164,25 +166,7 @@ export function MobileHome() {
         ) : tab === "recent" ? (
           <ul>
             {recent.map((n) => (
-              <li key={n.id}>
-                <NoteLink
-                  id={n.id}
-                  className="block border-b border-border px-1 py-3.5 active:bg-card"
-                >
-                  <div className="flex items-baseline gap-2">
-                    <span className="min-w-0 flex-1 truncate text-base font-medium text-text-strong">
-                      {n.title}
-                    </span>
-                    <span suppressHydrationWarning className="shrink-0 text-xs text-muted">
-                      {relativeTime(n.updatedAt)}
-                    </span>
-                  </div>
-                  {n.excerpt && (
-                    <p className="mt-0.5 line-clamp-2 text-sm leading-[1.45] text-quote">{n.excerpt}</p>
-                  )}
-                  <div className="mt-1 truncate text-xs text-accent">{displayFolder(n.path)}</div>
-                </NoteLink>
-              </li>
+              <RecentRow key={n.id} note={n} />
             ))}
           </ul>
         ) : (
@@ -233,5 +217,46 @@ export function MobileHome() {
         </button>
       </nav>
     </div>
+  );
+}
+
+/** Nota na lista "Recentes": toque abre; toque longo ou "…" mostra as ações. */
+function RecentRow({ note }: { note: NoteMeta }) {
+  const items = useNoteMenu(note);
+  const press = useLongPress((at) => openContextMenu(at, items, note.title));
+  return (
+    <li
+      className="relative flex items-stretch border-b border-border"
+      onContextMenu={(e) => {
+        e.preventDefault();
+        openContextMenu({ x: e.clientX, y: e.clientY }, items, note.title);
+      }}
+    >
+      <NoteLink
+        id={note.id}
+        {...press.handlers}
+        onClick={(e) => {
+          if (press.consumed()) e.preventDefault();
+        }}
+        className="block min-w-0 flex-1 select-none py-3.5 pl-1 pr-1 [-webkit-touch-callout:none] active:bg-card"
+      >
+        <div className="flex items-baseline gap-2">
+          <span className="min-w-0 flex-1 truncate text-base font-medium text-text-strong">{note.title}</span>
+          <span suppressHydrationWarning className="shrink-0 text-xs text-muted">
+            {relativeTime(note.updatedAt)}
+          </span>
+        </div>
+        {note.excerpt && <p className="mt-0.5 line-clamp-2 text-sm leading-[1.45] text-quote">{note.excerpt}</p>}
+        <div className="mt-1 truncate text-xs text-accent">{displayFolder(note.path)}</div>
+      </NoteLink>
+      <button
+        type="button"
+        aria-label={`Opções de ${note.title}`}
+        onClick={(e) => openMenuAt(e.currentTarget, items, note.title)}
+        className="-mr-2 flex w-11 shrink-0 items-start justify-center pt-3 text-muted active:bg-card"
+      >
+        <MoreIcon size={20} />
+      </button>
+    </li>
   );
 }

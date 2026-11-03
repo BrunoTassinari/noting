@@ -11,6 +11,7 @@ import {
   deleteNote,
   moveNote,
   NoteError,
+  renameFolder,
   type RelinkResult,
   renameNote,
   saveConflictCopy,
@@ -132,7 +133,7 @@ export async function openPeriodicNoteAction(
 /** Renomear/mover: `relinked` = ids das outras notas com [[links]] reescritos. */
 export type RelinkActionResult = { ok: true; relinked: string[] } | { ok: false; error: string };
 
-async function runRelink(fn: (userId: string) => Promise<RelinkResult>): Promise<RelinkActionResult> {
+async function runRelink(fn: (userId: string) => Promise<Pick<RelinkResult, "updated">>): Promise<RelinkActionResult> {
   const user = await requireUser();
   let relinked: string[];
   try {
@@ -154,11 +155,23 @@ export async function moveNoteAction(id: string, path: string): Promise<RelinkAc
   return runRelink((userId) => moveNote(userId, id, path));
 }
 
-export async function deleteNoteAction(id: string): Promise<ActionResult> {
-  const result = await run((userId) => deleteNote(userId, id), { refresh: false });
-  if (result.ok) {
+export async function renameFolderAction(from: string, to: string): Promise<RelinkActionResult> {
+  return runRelink((userId) => renameFolder(userId, from, to));
+}
+
+const APP_HREF = /^\/(?:n\/[0-9a-f-]{36}|migrar|pendencias|listas|sinalizadores|lixeira)?$/;
+
+/**
+ * Move para a lixeira. `goTo`: para onde ir se a nota excluída é a aberta
+ * (o cliente decide: a aba vizinha no desktop, a lista no celular). Sem
+ * `goTo`, só atualiza a tela atual.
+ */
+export async function deleteNoteAction(id: string, goTo?: string): Promise<ActionResult> {
+  const target = typeof goTo === "string" && APP_HREF.test(goTo) ? goTo : null;
+  const result = await run((userId) => deleteNote(userId, id), { refresh: !target });
+  if (result.ok && target) {
     revalidatePath("/", "layout");
-    redirect("/");
+    redirect(target);
   }
   return result;
 }

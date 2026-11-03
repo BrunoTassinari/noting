@@ -53,3 +53,7 @@ export function expandFolders(paths: string[]) {
   if (paths.every((p) => current.has(p))) return;
   write(new Set([...current, ...paths]));
 }
+
+export function collapseAllFolders() {
+  if (read().size > 0) write(new Set());
+}

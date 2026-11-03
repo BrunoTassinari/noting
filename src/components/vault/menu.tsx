@@ -8,6 +8,8 @@ export type MenuItem = {
   danger?: boolean;
   /** Classes extras (ex.: "lg:hidden" para esconder em telas largas). */
   className?: string;
+  /** Só no desktop (ex.: abrir em nova aba). */
+  desktopOnly?: boolean;
   onSelect: () => void;
 };
 

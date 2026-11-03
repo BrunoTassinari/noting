@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { type ReactNode, useEffect } from "react";
 import { signOut } from "@/app/login/actions";
@@ -8,7 +7,6 @@ import {
   CalendarIcon,
   CalendarMonthIcon,
   CalendarWeekIcon,
-  FolderIcon,
   LogoutIcon,
   SearchIcon,
 } from "@/components/icons";
@@ -16,7 +14,9 @@ import { BUJO_SCREENS } from "./bujo-screens";
 import { ThemeButton } from "./theme-button";
 import type { NoteMeta } from "@/lib/note-paths";
 import { MobileHome } from "./mobile-home";
-import { Sidebar } from "./sidebar";
+import { AppLink } from "./note-link";
+import { SidePanel } from "./side-panel";
+import { TabBar, WorkspaceSync } from "./tabs";
 import { usePeriodicNotes } from "./use-periodic";
 import { useVisualViewport } from "./use-visual-viewport";
 import { NoteSkeleton } from "./note-skeleton";
@@ -57,14 +57,7 @@ function Layout({ children }: { children: ReactNode }) {
       }
     >
       {/* Ribbon (desktop) */}
-      <div className="hidden w-12 shrink-0 flex-col items-center gap-1 bg-rail py-2.5 md:flex">
-        <span
-          title="Arquivos"
-          className="flex size-9 items-center justify-center rounded-lg bg-card text-accent"
-        >
-          <FolderIcon size={18} />
-          <span className="sr-only">Arquivos</span>
-        </span>
+      <div className="hidden w-12 shrink-0 flex-col items-center gap-1 border-r border-border bg-rail py-2.5 md:flex">
         <button
           type="button"
           aria-label="Buscar (Ctrl K)"
@@ -94,7 +87,7 @@ function Layout({ children }: { children: ReactNode }) {
           </button>
         ))}
         {BUJO_SCREENS.map(({ href, label, Icon }) => (
-          <Link
+          <AppLink
             key={href}
             href={href}
             aria-label={label}
@@ -105,7 +98,7 @@ function Layout({ children }: { children: ReactNode }) {
             }`}
           >
             <Icon size={18} />
-          </Link>
+          </AppLink>
         ))}
         <div className="flex-1" />
         <ThemeButton />
@@ -121,10 +114,10 @@ function Layout({ children }: { children: ReactNode }) {
         </form>
       </div>
 
-      {/* Arquivos (desktop) */}
-      <aside className="hidden min-h-0 w-[280px] shrink-0 border-r border-border md:block">
-        <Sidebar />
-      </aside>
+      <WorkspaceSync />
+
+      {/* Laterais (desktop): painéis escolhidos pelos ícones do topo de cada uma */}
+      <SidePanel side="left" />
 
       {/* Lista de notas (celular, quando nenhuma nota está aberta) */}
       {!noteOpen && (
@@ -135,6 +128,7 @@ function Layout({ children }: { children: ReactNode }) {
 
       {/* Coluna principal */}
       <main className={`min-h-0 min-w-0 flex-1 flex-col md:flex ${noteOpen ? "flex" : "hidden"}`}>
+        <TabBar />
         {/* Nota aberta/criada antes do servidor responder; continua aqui quando a página chega. */}
         {optimisticNote &&
           (optimisticNote.mode === "skeleton" ? (
@@ -148,6 +142,8 @@ function Layout({ children }: { children: ReactNode }) {
           ))}
         <div className={optimisticNote ? "hidden" : "contents"}>{children}</div>
       </main>
+
+      <SidePanel side="right" />
     </div>
   );
 }
