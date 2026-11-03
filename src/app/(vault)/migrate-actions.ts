@@ -1,7 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { type Day, parseDay } from "@/lib/bujo";
+import { type Day, parseDay, today } from "@/lib/bujo";
 import { isDestination, type Destination } from "@/lib/migrate";
 import { isUuid } from "@/lib/note-paths";
 import { requireUser } from "@/lib/session";
@@ -115,6 +115,20 @@ export async function migrateTasksAction(
     const sources = await listMigration(userId, today, migration.then((m) => m.bodies));
     const { changed, created } = await migration;
     return { changed, created, sources };
+  });
+}
+
+/** Adiciona "- [ ] texto" no fim das Pendências (cria a nota se faltar). */
+export async function addToBacklogAction(
+  text: string,
+): Promise<Result<{ backlog: Backlog; noteId: string; created: boolean }>> {
+  return run(async (userId) => {
+    const t = typeof text === "string" ? text.replace(/\s+/g, " ").trim() : "";
+    if (!t) throw new NoteError("Escreva a pendência.");
+    if (t.length > 500) throw new NoteError("Texto longo demais.");
+    // O "hoje" não importa para as Pendências; o destino é sempre a mesma nota.
+    const note = await writeToDestination(userId, "", "backlog", today(), [`- [ ] ${t}`]);
+    return { backlog: await getBacklog(userId), noteId: note.id, created: note.created };
   });
 }
 
