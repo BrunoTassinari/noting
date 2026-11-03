@@ -8,7 +8,7 @@ import { useSyncExternalStore } from "react";
 
 export type ThemePref = "system" | "light" | "dark";
 const KEY = "noting-theme";
-const COLORS = { light: "#fef8f6", dark: "#1b1a19" };
+const COLORS = { light: "#fef8f6", dark: "#141414" };
 
 /** Roda no <head>, antes de pintar. Mantém igual a apply() abaixo. */
 export const THEME_SCRIPT = `(function(){try{var p=localStorage.getItem("${KEY}")||"system";var m=window.matchMedia("(prefers-color-scheme: light)");function a(){var q=localStorage.getItem("${KEY}")||"system";var t=q==="system"?(m.matches?"light":"dark"):q;document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t;var c=document.querySelector('meta[name="theme-color"]');if(c)c.setAttribute("content",t==="light"?"${COLORS.light}":"${COLORS.dark}");}a();m.addEventListener("change",a);window.__notingApplyTheme=a;}catch(e){}})();`;

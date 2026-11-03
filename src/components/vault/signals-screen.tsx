@@ -1,5 +1,6 @@
 "use client";
 
+import { EmojiIcon, EmojiText } from "@/components/emoji-text";
 import { useCallback, useEffect, useState } from "react";
 import { loadSignalsAction, resolveSignalAction } from "@/app/(vault)/lists-actions";
 import { CancelTaskIcon, CheckIcon, FlagIcon } from "@/components/icons";
@@ -144,7 +145,7 @@ export function SignalsScreen() {
               onClick={() => setFilter(s.key)}
               className={chip(filter === s.key)}
             >
-              <span>{s.emoji}</span>
+              <EmojiIcon emoji={s.emoji} />
               {s.label}
               <span className="text-xs tabular-nums text-muted">{bySignal(s.key).length}</span>
             </button>
@@ -172,7 +173,7 @@ export function SignalsScreen() {
             sections.map((s) => (
               <section key={s.key} className="mb-6">
                 <h2 className="flex items-center gap-2 border-b border-border pb-1.5 pt-3 text-[13px] font-semibold uppercase tracking-wide text-muted">
-                  <span className="text-base normal-case">{s.emoji}</span>
+                  <span className="text-base normal-case"><EmojiIcon emoji={s.emoji} size={16} /></span>
                   <span className="flex-1">{s.label}</span>
                   <span className="font-normal tabular-nums">{s.entries.length}</span>
                 </h2>
@@ -195,8 +196,12 @@ export function SignalsScreen() {
                               open ? "text-text" : "text-muted line-through decoration-muted/60"
                             }`}
                           >
-                            {others.length > 0 && <span className="mr-1.5">{others.map((x) => x.emoji).join(" ")}</span>}
-                            {text}
+                            {others.map((x) => (
+                              <span key={x.key} className="mr-1.5">
+                                <EmojiIcon emoji={x.emoji} />
+                              </span>
+                            ))}
+                            <EmojiText text={text} />
                           </p>
                           <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs text-muted">
                             <NoteLink

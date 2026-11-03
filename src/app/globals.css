@@ -11,29 +11,30 @@
      muted = ink-4; faint = ink-5; accent = Rose.
    Tema escuro por padrão; o claro sobrescreve as variáveis (ver abaixo). */
 @theme static {
-  /* Escuro: paleta Coal do Firelight (mais contraste). */
-  --color-bg: #1b1a19;
-  --color-rail: #171615;
-  --color-panel: #1b1a19;
-  --color-surface: #232222;
-  --color-card: #2c2b2b;
-  --color-active: #3d2f33;
-  --color-code: #1b1a19;
-  --color-border: #353434;
-  --color-border-strong: #484746;
-  --color-divider: #2c2b2b;
-  --color-text: #e6d7cd;
-  --color-text-strong: #f8eae0;
-  --color-text-soft: #cbc6c3;
-  --color-body: #e6d7cd;
+  /* Escuro: matizes e acento da paleta Coal do Firelight, com fundos
+     neutros mais escuros (como o Obsidian) para leitura. */
+  --color-bg: #141414;
+  --color-rail: #101010;
+  --color-panel: #161616;
+  --color-surface: #1c1c1c;
+  --color-card: #262626;
+  --color-active: #33272a;
+  --color-code: #151515;
+  --color-border: #2c2c2c;
+  --color-border-strong: #3e3e3e;
+  --color-divider: #242424;
+  --color-text: #dedad6;
+  --color-text-strong: #f4f0ec;
+  --color-text-soft: #c4c1be;
+  --color-body: #dedad6;
   --color-quote: #b3b5bc;
   --color-muted: #9ba3b8;
   --color-faint: #818aa1;
   --color-accent: #f06b8a;
-  --color-accent-ink: #1b1a19;
+  --color-accent-ink: #161616;
   --color-danger: #ff7b7b;
-  --color-today: #3a2c30;
-  --color-code-text: #e6d7cd;
+  --color-today: #2e2427;
+  --color-code-text: #dedad6;
   --color-syn-keyword: #d5a3f5;
   --color-syn-string: #99cc78;
   --color-syn-number: #ffb57a;
@@ -61,12 +62,12 @@
   --color-h6: var(--color-text-strong);
   --color-link: var(--color-hue-cornflower);
   --color-tag-text: #cbc6c3;
-  --color-tag-bg: #2c2b2b;
-  --color-quote-bg: #2e2326;
+  --color-tag-bg: #262626;
+  --color-quote-bg: #251d20;
   --color-quote-bar: #a85468;
-  --color-selection: #45454f;
+  --color-selection: #3b3b44;
   --color-highlight: #5e5848;
-  --color-checkbox: #5d5c5c;
+  --color-checkbox: #555555;
   --color-task-doing: var(--color-hue-apricot);
   --color-task-moved: var(--color-hue-cornflower);
   --color-task-event: var(--color-hue-verdigris);

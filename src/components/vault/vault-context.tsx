@@ -16,6 +16,7 @@ import {
   createNoteAction,
   deleteNoteAction,
   moveNoteAction,
+  deleteFolderAction,
   renameFolderAction,
   type ActionResult,
 } from "@/app/(vault)/actions";
@@ -59,6 +60,8 @@ type Vault = {
   openDelete: (note: NoteMeta) => void;
   /** Renomear pasta = mover todas as notas dela (e das subpastas). */
   openRenameFolder: (path: string) => void;
+  /** Excluir pasta = mandar todas as notas dela (e das subpastas) para a lixeira. */
+  openDeleteFolder: (path: string) => void;
   showError: (message: string) => void;
   /** Renomear/mover reescreveu [[links]] nestas notas: limpa o cache e avisa. */
   reportRelinked: (ids: string[]) => void;
@@ -93,6 +96,7 @@ type DialogState = { at?: string } & (
   | { kind: "move"; note: NoteMeta }
   | { kind: "delete"; note: NoteMeta }
   | { kind: "renameFolder"; path: string }
+  | { kind: "deleteFolder"; path: string }
 );
 
 export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children: ReactNode }) {
@@ -136,6 +140,11 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
   );
   const folders = useMemo(() => listFolders(allNotes), [allNotes]);
   const currentFolder = activeNote?.path ?? "";
+
+  const folderNotes = useCallback(
+    (path: string) => allNotes.filter((n) => n.path === path || n.path.startsWith(`${path}/`)),
+    [allNotes],
+  );
 
   const [rawDialog, setDialog] = useState<DialogState>({ kind: "none" });
   const dialog: DialogState = rawDialog.at === activeId ? rawDialog : { kind: "none" };
@@ -231,6 +240,7 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
     goToNote,
     openHref,
     openRenameFolder: (path) => setDialog({ kind: "renameFolder", path, at: activeId }),
+    openDeleteFolder: (path) => setDialog({ kind: "deleteFolder", path, at: activeId }),
     openMove: (note) => setDialog({ kind: "move", note, at: activeId }),
     openDelete: (note) => setDialog({ kind: "delete", note, at: activeId }),
     showError,
@@ -338,6 +348,33 @@ export function VaultProvider({ notes, children }: { notes: NoteMeta[]; children
           if (!res.ok) return res.error;
           close();
           reportRelinked(res.relinked);
+          return null;
+        }}
+      />
+
+      <ConfirmDialog
+        open={dialog.kind === "deleteFolder"}
+        onClose={close}
+        title="Excluir pasta"
+        message={
+          dialog.kind === "deleteFolder" ? (
+            <>
+              Mover a pasta <strong className="text-text">{dialog.path}</strong> e as{" "}
+              {folderNotes(dialog.path).length} notas dela (com subpastas) para a lixeira? Dá para
+              restaurar em até 30 dias.
+            </>
+          ) : null
+        }
+        confirmLabel="Mover para a lixeira"
+        onConfirm={async () => {
+          if (dialog.kind !== "deleteFolder") return null;
+          const ids = new Set(folderNotes(dialog.path).map((n) => n.id));
+          const err = actionError(await deleteFolderAction(dialog.path));
+          if (err) return err;
+          const next = pruneNotes(ids);
+          close();
+          ids.forEach((id) => forgetCachedNote(id));
+          if (activeId && ids.has(activeId)) router.push(next ?? "/");
           return null;
         }}
       />

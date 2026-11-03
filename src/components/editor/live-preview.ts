@@ -9,7 +9,9 @@ import {
   WidgetType,
 } from "@codemirror/view";
 import { normalizeState, TASK_LABELS, type TaskState } from "@/lib/tasks";
+import { emojiInfo, EMOJI_ICON_RE } from "@/lib/emoji-icons";
 import { bujoRanges } from "./bujo-widgets";
+import { EmojiIconWidget } from "./emoji-widget";
 
 // Renderização ao vivo, no estilo do Obsidian: fora da linha em edição a
 // sintaxe Markdown some e o texto aparece formatado; na linha do cursor a
@@ -357,6 +359,19 @@ function build(view: EditorView, focused: boolean): DecorationSet {
         decos.push(Decoration.mark({ class: "cm-wikilink", attributes: attrs }).range(labelStart, end - 2));
         decos.push(hide.range(end - 2, end));
       }
+    }
+
+    // Emojis conhecidos (📖 🔎 💼…) viram ícones coloridos, menos com o
+    // cursor encostado neles (aí o emoji aparece para editar).
+    for (const m of text.matchAll(EMOJI_ICON_RE)) {
+      const start = from + m.index;
+      const end = start + m[0].length;
+      if (inCode(start) || cursorIn(start, end)) continue;
+      const info = emojiInfo(m[0]);
+      if (!info) continue;
+      decos.push(
+        Decoration.replace({ widget: new EmojiIconWidget(info.icon, info.hue, info.label) }).range(start, end),
+      );
     }
 
     for (const m of text.matchAll(TAG_RE)) {

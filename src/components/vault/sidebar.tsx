@@ -109,12 +109,13 @@ function FolderRow({
   expanded: Set<string>;
   activeId?: string;
 }) {
-  const { createNote, creating, openRenameFolder } = useVault();
+  const { createNote, creating, openRenameFolder, openDeleteFolder } = useVault();
   const isOpen = expanded.has(node.path);
   const pad = 8 + depth * 14;
   const items: MenuItem[] = [
     { label: "Nova nota aqui", icon: <PlusIcon size={15} />, onSelect: () => createNote(node.path) },
     { label: "Renomear pasta…", icon: <PencilIcon size={15} />, onSelect: () => openRenameFolder(node.path) },
+    { label: "Excluir pasta…", icon: <TrashIcon size={15} />, danger: true, onSelect: () => openDeleteFolder(node.path) },
   ];
   const press = useLongPress((at) => openContextMenu(at, items, `Pasta ${node.name}`));
 

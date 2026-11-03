@@ -8,6 +8,7 @@ import { isUuid } from "@/lib/note-paths";
 import { getOrCreateNote, pullFutureLogIntoMonth } from "@/server/bujo";
 import {
   createNote,
+  deleteFolder,
   deleteNote,
   moveNote,
   NoteError,
@@ -153,6 +154,11 @@ export async function renameNoteAction(id: string, title: string): Promise<Relin
 
 export async function moveNoteAction(id: string, path: string): Promise<RelinkActionResult> {
   return runRelink((userId) => moveNote(userId, id, path));
+}
+
+/** Move a pasta inteira (com subpastas) para a lixeira. */
+export async function deleteFolderAction(path: string): Promise<ActionResult> {
+  return run((userId) => deleteFolder(userId, path));
 }
 
 export async function renameFolderAction(from: string, to: string): Promise<RelinkActionResult> {

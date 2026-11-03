@@ -20,9 +20,11 @@ import {
   TrashIcon,
 } from "@/components/icons";
 import { LISTS_FOLDER } from "@/lib/bujo";
-import type { ListItem } from "@/lib/lists";
+import { itemLabel, itemLinkTarget, type ListItem } from "@/lib/lists";
+import { resolveWikilink } from "@/lib/note-paths";
 import type { TaskState } from "@/lib/tasks";
 import type { ListsPayload } from "@/server/lists";
+import { EmojiIcon, EmojiText } from "@/components/emoji-text";
 import { openContextMenu, openMenuAt } from "./context-menu";
 import type { MenuItem } from "./menu";
 import { StateBox } from "./list-state";
@@ -38,7 +40,7 @@ const LIST_KEY = "noting-sidebar-list";
 type Ref = { noteId: string; line: number; raw: string };
 
 export function ListsPanel() {
-  const { showError, goToNote, createNote } = useVault();
+  const { showError, goToNote, createNote, notes } = useVault();
   const [data, setData] = useState<ListsPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(() => {
@@ -124,7 +126,14 @@ export function ListsPanel() {
     else showError(r.error);
   };
 
+  /** Nota do [[link]] do item, se existir. */
+  const linkedNote = (i: ListItem) => {
+    const t = itemLinkTarget(i.title);
+    return t ? resolveWikilink(notes, t) : null;
+  };
+
   const menuFor = (i: ListItem): MenuItem[] => {
+    const linked = linkedNote(i);
     const states: [TaskState, string][] = [
       [" ", "Na fila"],
       ["/", "Em andamento"],
@@ -140,15 +149,22 @@ export function ListsPanel() {
           onSelect: () => void setState(i, s),
         })),
       { label: i.rating || i.comment ? "Editar avaliação" : "Avaliar (★ e comentário)", icon: <StarIcon size={15} />, onSelect: () => setEditing(i.line) },
-      { label: "Notas de estudo", icon: <BookIcon size={15} />, onSelect: () => void openStudy(i) },
-      { label: "Notas de estudo em nova aba", icon: <BookIcon size={15} />, desktopOnly: true, onSelect: () => void openStudy(i, true) },
+      ...(linked
+        ? [
+            { label: `Abrir “${linked.title}”`, icon: <NoteIcon size={15} />, onSelect: () => goToNote(linked.id) },
+            { label: "Abrir em nova aba", icon: <NoteIcon size={15} />, desktopOnly: true, onSelect: () => goToNote(linked.id, true) },
+          ]
+        : [{ label: "Notas de estudo", icon: <BookIcon size={15} />, onSelect: () => void openStudy(i) }]),
+      ...(linked
+        ? []
+        : [{ label: "Notas de estudo em nova aba", icon: <BookIcon size={15} />, desktopOnly: true, onSelect: () => void openStudy(i, true) }]),
       { label: "Abrir a lista", icon: <NoteIcon size={15} />, onSelect: () => goToNote(current!.id) },
       {
         label: "Excluir item",
         icon: <TrashIcon size={15} />,
         danger: true,
         onSelect: () => {
-          if (window.confirm(`Excluir “${i.title}” da lista?`)) void apply(deleteListItemAction(refOf(i)));
+          if (window.confirm(`Excluir “${itemLabel(i.title)}” da lista?`)) void apply(deleteListItemAction(refOf(i)));
         },
       },
     ];
@@ -165,12 +181,12 @@ export function ListsPanel() {
         className="group flex min-h-11 items-start gap-2 rounded-md px-2 py-1.5 hover:bg-card md:min-h-7"
         onContextMenu={(e) => {
           e.preventDefault();
-          openContextMenu({ x: e.clientX, y: e.clientY }, menuFor(i), i.title);
+          openContextMenu({ x: e.clientX, y: e.clientY }, menuFor(i), itemLabel(i.title));
         }}
       >
         <button
           type="button"
-          aria-label={i.state === "x" ? `Voltar ${i.title} para a fila` : `Concluir ${i.title}`}
+          aria-label={i.state === "x" ? `Voltar ${itemLabel(i.title)} para a fila` : `Concluir ${itemLabel(i.title)}`}
           title={i.state === "x" ? "Voltar para a fila" : "Concluir"}
           disabled={busy}
           onClick={() => void setState(i, i.state === "x" || i.state === "-" ? " " : "x")}
@@ -180,21 +196,27 @@ export function ListsPanel() {
         </button>
         <button
           type="button"
-          onClick={(e) => openMenuAt(e.currentTarget, menuFor(i), i.title)}
+          onClick={(e) => openMenuAt(e.currentTarget, menuFor(i), itemLabel(i.title))}
           className={`min-w-0 flex-1 break-words text-left text-[15px] md:text-[13px] ${
             i.state === "x" || i.state === "-" ? "text-muted line-through" : "text-text"
           }`}
         >
-          {i.buy && <span className="mr-1">🛒</span>}
-          {i.title}
+          {i.emojis.map((e, k) => (
+            <span key={k} className="mr-1">
+              <EmojiIcon emoji={e} />
+            </span>
+          ))}
+          <span className={linkedNote(i) ? "text-link" : undefined}>
+            <EmojiText text={itemLabel(i.title)} />
+          </span>
           {i.rating && <span className="ml-1.5 text-xs font-semibold text-accent">★ {i.rating}</span>}
           {i.comment && <span className="mt-0.5 block text-xs italic text-muted">{i.comment}</span>}
         </button>
         <button
           type="button"
-          aria-label={`Ações de ${i.title}`}
+          aria-label={`Ações de ${itemLabel(i.title)}`}
           title="Ações"
-          onClick={(e) => openMenuAt(e.currentTarget, menuFor(i), i.title)}
+          onClick={(e) => openMenuAt(e.currentTarget, menuFor(i), itemLabel(i.title))}
           className="flex size-9 shrink-0 items-center justify-center rounded text-muted hover:bg-active hover:text-text md:size-6 md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100"
         >
           <MoreIcon size={14} />

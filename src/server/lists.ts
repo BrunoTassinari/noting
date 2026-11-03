@@ -3,8 +3,12 @@ import { and, eq, like, or } from "drizzle-orm";
 import { db } from "@/db";
 import { notes } from "@/db/schema";
 import { isoDay, LISTS_FOLDER, periodOf } from "@/lib/bujo";
+import { fold } from "@/lib/fold";
+import { resolveWikilink } from "@/lib/note-paths";
 import {
   insertListItem,
+  itemLabel,
+  itemLinkTarget,
   isOpenState,
   type ListItem,
   parseListItems,
@@ -169,12 +173,16 @@ export async function removeListItem(userId: string, noteId: string, line: numbe
   });
 }
 
-/** Pasta das notas de estudo de uma lista: "Conhecimento/<Lista>". */
-export const studyFolder = (listName: string) => `Conhecimento/${listName.replace(/\//g, " - ")}`;
+/** Pasta das notas de estudo de uma lista (Livros → Conhecimento/Fichamentos). */
+export const studyFolder = (listName: string) =>
+  /^livros?$/i.test(listName.trim()) ? "Conhecimento/Fichamentos" : `Conhecimento/${listName.replace(/\//g, " - ")}`;
 
 /**
- * Nota de estudo de um item: se já existe uma nota com o mesmo nome
- * (qualquer pasta), abre essa; senão cria em "Conhecimento/<Lista>".
+ * Nota de estudo de um item:
+ *  1. se o item é um [[link]], abre a nota do link (se existir);
+ *  2. senão, uma nota com o mesmo nome em qualquer pasta (sem diferenciar
+ *     maiúsculas/acentos), preferindo a pasta de estudo da lista;
+ *  3. senão, cria na pasta de estudo da lista.
  */
 export async function studyNoteFor(userId: string, listId: string, itemTitle: string): Promise<string> {
   const [list] = await db
@@ -182,19 +190,31 @@ export async function studyNoteFor(userId: string, listId: string, itemTitle: st
     .from(notes)
     .where(and(eq(notes.userId, userId), eq(notes.id, listId), inListsFolder));
   if (!list) throw new NoteError("Lista não encontrada.");
-  const title = itemTitle.replace(/\//g, "-").replace(/\s+/g, " ").trim().slice(0, 200);
-  if (!title) throw new NoteError("Item sem nome.");
-  const [existing] = await db
-    .select({ id: notes.id })
-    .from(notes)
-    .where(and(eq(notes.userId, userId), eq(notes.title, title)))
-    .limit(1);
-  if (existing) return existing.id;
   const listName = nameOf(list);
+  const folder = studyFolder(listName);
+  const all = await db
+    .select({ id: notes.id, path: notes.path, title: notes.title, updatedAt: notes.updatedAt })
+    .from(notes)
+    .where(eq(notes.userId, userId));
+  const metas = all.map((n) => ({ ...n, updatedAt: n.updatedAt.toISOString() }));
+
+  const target = itemLinkTarget(itemTitle);
+  if (target) {
+    const linked = resolveWikilink(metas, target, folder);
+    if (linked) return linked.id;
+  }
+
+  const title = itemLabel(itemTitle).replace(/\//g, "-").replace(/\s+/g, " ").trim().slice(0, 200);
+  if (!title) throw new NoteError("Item sem nome.");
+  const key = fold(title);
+  const same = metas.filter((n) => fold(n.title) === key);
+  const found = same.find((n) => n.path === folder) ?? same[0];
+  if (found) return found.id;
+
   const { getOrCreateNote } = await import("./bujo");
   const note = await getOrCreateNote(
     userId,
-    { path: studyFolder(listName), title },
+    { path: folder, title },
     `# ${title}\n\nLista: [[${list.path}/${list.title}|${listName}]]\n\n## Notas\n\n`,
   );
   return note.id;

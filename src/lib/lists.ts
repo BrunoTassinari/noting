@@ -9,6 +9,8 @@
 // "★ — comentário", "★ 9.5 — comentário"). Sem "★", a linha toda é título.
 
 import { classifyLine, setTaskState } from "./migrate";
+import { markdownToPlain } from "./markdown-text";
+import { wikilinkTitle } from "./note-paths";
 import type { TaskState } from "./tasks";
 
 const FENCE_RE = /^\s*(```|~~~)/;
@@ -240,4 +242,18 @@ export function signalItems(body: string): SignalItem[] {
     out.push({ line, raw, state: info.state, signals, text: rest.trim() });
   });
   return out;
+}
+
+/** Texto para mostrar o título do item: [[Nota|apelido]] → apelido, [[Pasta/Nota]] → Nota. */
+export function itemLabel(title: string): string {
+  const t = title
+    .replace(/!?\[\[([^\]|]+)\|([^\]]+)\]\]/g, "$2")
+    .replace(/!?\[\[([^\]]+)\]\]/g, (_m, target: string) => wikilinkTitle(target));
+  return markdownToPlain(t).trim() || title.trim();
+}
+
+/** Alvo do primeiro [[link]] do título do item (ou null). */
+export function itemLinkTarget(title: string): string | null {
+  const m = /\[\[([^\]|#]+)/.exec(title);
+  return m ? m[1].trim() : null;
 }

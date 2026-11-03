@@ -121,6 +121,12 @@ export const editorTheme = EditorView.theme(
       verticalAlign: "-0.12em",
       backgroundImage: `radial-gradient(circle at 6px 55%, ${c.muted} 2.6px, transparent 3.2px)`,
     },
+    ".cm-emoji-icon": {
+      display: "inline-flex",
+      verticalAlign: "-0.16em",
+      textIndent: "0",
+      marginRight: "1px",
+    },
     ".cm-ol-mark": { color: c.muted, display: "inline-block", width: "26px", textIndent: "0", fontVariantNumeric: "tabular-nums" },
     ".cm-li": { paddingTop: "2px !important", paddingBottom: "2px !important" },
     ".cm-list-mark": { color: c.muted },

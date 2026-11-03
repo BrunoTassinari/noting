@@ -1,5 +1,6 @@
 "use client";
 
+import { EmojiIcon, EmojiText } from "@/components/emoji-text";
 import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
 import { loadSignalsAction } from "@/app/(vault)/lists-actions";
 import {
@@ -383,6 +384,9 @@ function SignalsPanel() {
         sections.map((s) => (
           <div key={s.key} className="mb-2">
             <div className="flex items-center px-3 pb-1 pt-2 text-xs font-semibold text-text-soft">
+              <span className="mr-1.5">
+                <EmojiIcon emoji={s.emoji} />
+              </span>
               <span className="flex-1">{s.label}</span>
               <span className="font-normal tabular-nums text-muted">{s.entries.length}</span>
             </div>
@@ -396,7 +400,7 @@ function SignalsPanel() {
                     className="block w-full rounded-md px-3 py-1.5 text-left hover:bg-card"
                   >
                     <span className="block break-words text-[13px] text-text">
-                      {markdownToPlain(item.text) || "(sem texto)"}
+                      <EmojiText text={markdownToPlain(item.text) || "(sem texto)"} />
                     </span>
                     <span className="block truncate text-[11px] text-muted">{src.title}</span>
                   </button>

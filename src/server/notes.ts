@@ -302,3 +302,44 @@ export async function deleteNote(userId: string, id: string): Promise<void> {
     await rebuildLinks(tx, userId, before);
   });
 }
+
+/** Move para a lixeira todas as notas da pasta (e subpastas). Devolve quantas. */
+export async function deleteFolder(userId: string, folder: string): Promise<number> {
+  const path = unwrap(validateFolder(folder));
+  if (!path) throw new NoteError("Escolha uma pasta.");
+  const escaped = path.replace(/[\\%_]/g, (c) => `\\${c}`);
+  const inFolder = and(eq(notes.userId, userId), or(eq(notes.path, path), like(notes.path, `${escaped}/%`)));
+  return db.transaction(async (tx) => {
+    const ids = (await tx.select({ id: notes.id }).from(notes).where(inFolder).for("update")).map((r) => r.id);
+    if (ids.length === 0) throw new NoteError("Pasta vazia ou não encontrada.");
+    // Quem (de fora da pasta) apontava para as notas: antes de excluir, pois
+    // os links somem em cascata.
+    const gone = new Set(ids);
+    const linkers = new Set<string>();
+    for (const id of ids) for (const l of await linkersOf(tx, userId, id)) if (!gone.has(l)) linkers.add(l);
+
+    const removed = await tx.delete(notes).where(inFolder).returning();
+    const now = new Date();
+    for (let i = 0; i < removed.length; i += 200) {
+      const rows = removed.slice(i, i + 200).map((n) => ({
+        id: n.id,
+        userId,
+        path: n.path,
+        title: n.title,
+        body: n.body,
+        createdAt: n.createdAt,
+        updatedAt: n.updatedAt,
+        deletedAt: now,
+      }));
+      await tx
+        .insert(trash)
+        .values(rows)
+        .onConflictDoUpdate({
+          target: trash.id,
+          set: { path: sql`excluded.path`, title: sql`excluded.title`, body: sql`excluded.body`, deletedAt: now },
+        });
+    }
+    await rebuildLinks(tx, userId, [...linkers]);
+    return removed.length;
+  });
+}

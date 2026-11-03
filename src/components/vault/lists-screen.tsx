@@ -1,5 +1,7 @@
 "use client";
 
+import { EmojiIcon, EmojiText } from "@/components/emoji-text";
+import { itemLabel } from "@/lib/lists";
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
   addListItemAction,
@@ -336,8 +338,7 @@ function ItemRow({
   onToggle: () => void;
   onEdit: () => void;
 }) {
-  const title = markdownToPlain(item.title) || "(sem título)";
-  const emojis = item.emojis.join(" ");
+  const title = itemLabel(item.title) || "(sem título)";
   const resolved = item.state === "-";
   return (
     <li className="group flex items-start gap-1 border-b border-border/60">
@@ -363,8 +364,12 @@ function ItemRow({
               resolved ? "text-muted line-through decoration-muted/60" : "text-text"
             }`}
           >
-            {emojis && <span className="mr-1.5 no-underline">{emojis}</span>}
-            {title}
+            {item.emojis.map((e, k) => (
+              <span key={k} className="mr-1.5 no-underline">
+                <EmojiIcon emoji={e} />
+              </span>
+            ))}
+            <EmojiText text={title} />
           </span>
           {section && (
             <span className="hidden max-w-[10rem] shrink-0 truncate text-xs text-muted sm:inline">{section}</span>
@@ -552,7 +557,7 @@ function EditSheet({
     else onSave(patch);
   };
 
-  const title = item ? `${item.emojis.join(" ")} ${markdownToPlain(item.title)}`.trim() : "";
+  const title = item ? `${item.emojis.join(" ")} ${itemLabel(item.title)}`.trim() : "";
 
   return (
     <Sheet open={item !== null} onClose={onClose} title={title || "Item"}>

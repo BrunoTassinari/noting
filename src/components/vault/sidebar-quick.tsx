@@ -1,5 +1,6 @@
 "use client";
 
+import { EmojiText } from "@/components/emoji-text";
 import { useCallback, useEffect, useState } from "react";
 import { loadBacklogAction } from "@/app/(vault)/migrate-actions";
 import type { Backlog } from "@/server/migrate";
@@ -81,7 +82,7 @@ export function BacklogQuick() {
                     className="flex min-h-11 w-full items-start gap-2 rounded-md px-3 py-1.5 text-left text-[15px] text-text hover:bg-card md:min-h-7 md:text-[13px]"
                   >
                     <span aria-hidden="true" className="mt-[3px] size-3 shrink-0 rounded-[3px] border-[1.5px] border-faint" />
-                    <span className="min-w-0 break-words">{t.text}</span>
+                    <span className="min-w-0 break-words"><EmojiText text={t.text} /></span>
                   </button>
                 </li>
               ))}
