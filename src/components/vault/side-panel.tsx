@@ -16,6 +16,7 @@ import {
   SearchIcon,
   SidebarLeftIcon,
   SidebarRightIcon,
+  SparklesIcon,
 } from "@/components/icons";
 import { searchTerms } from "@/lib/fold";
 import { isOpenState, SIGNALS } from "@/lib/lists";
@@ -24,6 +25,7 @@ import { markdownToPlain } from "@/lib/markdown-text";
 import type { SearchResult } from "@/server/search";
 import type { SignalSource } from "@/server/lists";
 import { useEditorInfo } from "./active-editor";
+import { Assistant } from "./assistant";
 import { Backlinks } from "./backlinks";
 import { openContextMenu, openMenuAt } from "./context-menu";
 import {
@@ -56,7 +58,12 @@ export const PANELS: Record<PanelKey, { label: string; Icon: IconType; Body: Com
   outline: { label: "Tópicos", Icon: ListIcon, Body: OutlinePanel, tone: "text-hue-orchid" },
   lists: { label: "Listas", Icon: ChecklistIcon, Body: ListsPanel, tone: "text-hue-verdigris" },
   backlog: { label: "Pendências", Icon: InboxIcon, Body: BacklogPanel, tone: "text-hue-fern" },
+  assistant: { label: "Assistente", Icon: SparklesIcon, Body: AssistantPanel, tone: "text-hue-orchid" },
 };
+
+function AssistantPanel() {
+  return <Assistant compact />;
+}
 
 function ListsPanel() {
   return (

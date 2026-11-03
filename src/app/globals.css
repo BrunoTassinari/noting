@@ -172,3 +172,25 @@ body {
 ::selection {
   background: var(--color-selection);
 }
+
+/* Respostas do assistente (Markdown renderizado). */
+.ai-md > * + * { margin-top: 0.6em; }
+.ai-md h1, .ai-md h2, .ai-md h3, .ai-md h4 { color: var(--color-text-strong); font-weight: 600; line-height: 1.3; margin-top: 1em; }
+.ai-md h1 { font-size: 1.25em; }
+.ai-md h2 { font-size: 1.12em; }
+.ai-md h3, .ai-md h4 { font-size: 1em; }
+.ai-md strong { color: var(--color-text-strong); font-weight: 600; }
+.ai-md ul, .ai-md ol { padding-left: 1.4em; }
+.ai-md ul { list-style: disc; }
+.ai-md ol { list-style: decimal; }
+.ai-md li + li, .ai-md li > ul, .ai-md li > ol { margin-top: 0.25em; }
+.ai-md li::marker { color: var(--color-muted); }
+.ai-md blockquote { border-left: 2px solid var(--color-border-strong); padding-left: 0.8em; color: var(--color-text-soft); }
+.ai-md code { font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.88em; background: var(--color-card); border-radius: 4px; padding: 0.1em 0.3em; }
+.ai-md pre { background: var(--color-card); border-radius: 8px; padding: 0.7em 0.9em; overflow-x: auto; }
+.ai-md pre code { background: none; padding: 0; }
+.ai-md table { border-collapse: collapse; display: block; overflow-x: auto; font-size: 0.93em; }
+.ai-md th, .ai-md td { border: 1px solid var(--color-border); padding: 0.3em 0.6em; text-align: left; }
+.ai-md th { color: var(--color-text-strong); font-weight: 600; }
+.ai-md hr { border: 0; border-top: 1px solid var(--color-border); }
+.ai-md input[type="checkbox"] { margin-right: 0.4em; vertical-align: middle; }

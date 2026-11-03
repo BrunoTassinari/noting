@@ -197,10 +197,34 @@ export const userSettings = pgTable("user_settings", {
     .primaryKey()
     .references(() => user.id, { onDelete: "cascade" }),
   habits: jsonb("habits").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  /** Chave da API da Anthropic, cifrada (AES-GCM com o BETTER_AUTH_SECRET). */
+  aiKey: text("ai_key"),
+  /** Modelo do assistente (id da API); null = padrão. */
+  aiModel: text("ai_model"),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()
     .$onUpdate(() => new Date()),
 });
+
+// Conversas com o assistente. `messages` guarda o histórico no formato da API
+// da Anthropic (blocos de conteúdo), só acrescentado, nunca reescrito.
+export const aiChats = pgTable(
+  "ai_chats",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    messages: jsonb("messages").$type<unknown[]>().notNull().default(sql`'[]'::jsonb`),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [index("ai_chats_user_updated_idx").on(t.userId, t.updatedAt.desc())],
+);
 
 export type Note = typeof notes.$inferSelect;

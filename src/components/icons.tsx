@@ -1,6 +1,12 @@
 import type { SVGProps } from "react";
 import {
   ArrowLeft as LArrowLeft,
+  ArrowUp as LArrowUp,
+  Globe as LGlobe,
+  History as LHistory,
+  Paperclip as LPaperclip,
+  Sparkles as LSparkles,
+  Square as LSquare,
   ArrowRight as LArrowRight,
   BookOpen as LBookOpen,
   CalendarCheck as LCalendarCheck,
@@ -118,6 +124,12 @@ export const SidebarRightIcon = make(LPanelRight);
 export const TabNewIcon = make(LSquarePlus);
 export const CollapseIcon = make(LChevronsDownUp);
 export const BookIcon = make(LBookOpen);
+export const SparklesIcon = make(LSparkles);
+export const PaperclipIcon = make(LPaperclip);
+export const SendIcon = make(LArrowUp);
+export const StopIcon = make(LSquare);
+export const HistoryIcon = make(LHistory);
+export const GlobeIcon = make(LGlobe);
 
 /** Nuvem com check (não existe nesta versão do Lucide). */
 export function CloudCheckIcon(props: IconProps) {

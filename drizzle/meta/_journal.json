@@ -43,6 +43,13 @@
       "when": 1793731729725,
       "tag": "0005_user_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793746560542,
+      "tag": "0006_ai_assistant",
+      "breakpoints": true
     }
   ]
 }

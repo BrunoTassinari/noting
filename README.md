@@ -40,6 +40,10 @@ navegador do PC e no celular (PWA).
    `BETTER_AUTH_URL` (ex.: `https://seu-app.vercel.app`). Opcional:
    `SIGNUP_CODE`, um código de convite que libera "Criar conta" na tela de
    login (sem ela, o cadastro fica desligado).
+   O Assistente não precisa de variável: cada pessoa salva a própria chave
+   da API da Anthropic em **Configurações › Assistente** (fica cifrada com o
+   `BETTER_AUTH_SECRET`; se trocar o segredo, salve a chave de novo).
+   `ANTHROPIC_API_KEY` é opcional, uma chave padrão para quem não salvou a sua.
 4. Aplique as migrations e crie o usuário no banco de produção, rodando
    localmente com o `DATABASE_URL` de produção:
 

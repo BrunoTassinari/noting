@@ -6,7 +6,7 @@ import { useSyncExternalStore } from "react";
 // painel por vez, escolhido na fileira de ícones do topo. Qualquer painel
 // pode ficar em qualquer lateral. Tudo fica salvo no localStorage.
 
-export const PANEL_KEYS = ["files", "search", "signals", "backlinks", "outline", "lists", "backlog"] as const;
+export const PANEL_KEYS = ["files", "search", "signals", "backlinks", "outline", "lists", "backlog", "assistant"] as const;
 export type PanelKey = (typeof PANEL_KEYS)[number];
 export type Side = "left" | "right";
 export type SideState = { open: boolean; width: number; active: PanelKey | null };
@@ -27,6 +27,7 @@ const DEFAULT: LayoutState = {
     outline: "right",
     lists: "right",
     backlog: "right",
+    assistant: "right",
   },
 };
 

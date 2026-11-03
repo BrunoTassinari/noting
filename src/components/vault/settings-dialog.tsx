@@ -1,13 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { loadAiSettingsAction, saveAiSettingsAction } from "@/app/(vault)/assistant-actions";
 import { saveHabitsAction } from "@/app/(vault)/settings-actions";
 import { ArrowLeftIcon, ArrowRightIcon, CloseIcon, PlusIcon } from "@/components/icons";
 import { isoDay, MONTHS, today } from "@/lib/bujo";
 import { setUserHabits } from "@/lib/user-habits";
+import { AI_SETTINGS_EVENT } from "@/lib/ai-display";
 import { buttonBase, Modal } from "./dialogs";
 
-/** Configurações da pessoa: por enquanto, a lista de hábitos do Bullet Journal. */
+const AI_MODELS = [
+  { id: "claude-opus-5-5", label: "Claude Opus 5.5", hint: "O mais capaz · US$ 4 / 20 por milhão de tokens (entrada / saída)" },
+  { id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5", hint: "Rápido e bom · US$ 2 / 10 por milhão" },
+  { id: "claude-haiku-5-5", label: "Claude Haiku 5.5", hint: "O mais barato · US$ 0,10 / 0,50 por milhão" },
+];
+
+/** Configurações da pessoa: hábitos do Bullet Journal e o assistente. */
 export function SettingsDialog({
   open,
   onClose,
@@ -22,8 +30,180 @@ export function SettingsDialog({
 }) {
   return (
     <Modal open={open} onClose={onClose} title="Configurações">
-      <HabitsForm initial={habits} onCancel={onClose} onSaved={onSaved} />
+      <SettingsTabs habits={habits} onClose={onClose} onSaved={onSaved} />
     </Modal>
+  );
+}
+
+function SettingsTabs({
+  habits,
+  onClose,
+  onSaved,
+}: {
+  habits: string[];
+  onClose: () => void;
+  onSaved: (monthNoteId: string | null) => void;
+}) {
+  const [tab, setTab] = useState<"habits" | "ai">("habits");
+  return (
+    <>
+      <div role="tablist" aria-label="Seções" className="mb-4 flex gap-1 rounded-lg bg-rail p-1">
+        {(
+          [
+            ["habits", "Hábitos"],
+            ["ai", "Assistente"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={tab === key}
+            onClick={() => setTab(key)}
+            className={`h-9 flex-1 rounded-md text-[13px] font-medium md:h-8 ${tab === key ? "bg-active text-text-strong" : "text-muted"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === "habits" ? (
+        <HabitsForm initial={habits} onCancel={onClose} onSaved={onSaved} />
+      ) : (
+        <AiForm onClose={onClose} />
+      )}
+    </>
+  );
+}
+
+function AiForm({ onClose }: { onClose: () => void }) {
+  const [keyHint, setKeyHint] = useState<string | null>(null);
+  const [serverKey, setServerKey] = useState(false);
+  const [model, setModel] = useState(AI_MODELS[0].id);
+  const [apiKey, setApiKey] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    void loadAiSettingsAction()
+      .catch(() => null)
+      .then((r) => {
+        if (r?.ok) {
+          setKeyHint(r.settings.keyHint);
+          setServerKey(r.settings.serverKey);
+          setModel(r.settings.model);
+        }
+        setLoaded(true);
+      });
+  }, []);
+
+  const save = async (patch: { apiKey?: string; model?: string }) => {
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    const r = await saveAiSettingsAction(patch).catch(() => null);
+    setSaving(false);
+    if (!r?.ok) {
+      setError(r?.error ?? "Não foi possível salvar.");
+      return false;
+    }
+    setKeyHint(r.settings.keyHint);
+    setModel(r.settings.model);
+    setApiKey("");
+    window.dispatchEvent(new Event(AI_SETTINGS_EVENT));
+    setSaved(true);
+    return true;
+  };
+
+  if (!loaded) return <p className="py-4 text-[13px] text-muted">Carregando…</p>;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <h3 className="text-sm font-semibold text-text">Chave da API da Anthropic</h3>
+        <p className="mt-0.5 text-xs leading-normal text-muted">
+          Crie em console.anthropic.com › API Keys e coloque créditos em Billing. O uso é cobrado lá, à parte da
+          assinatura do Claude. A chave fica cifrada e é sua: cada pessoa usa a própria.
+        </p>
+      </div>
+      {keyHint ? (
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-rail px-3 py-2 text-[13px]">
+          <span className="flex-1 text-text">
+            Chave salva <span className="font-mono text-muted">sk-ant-{keyHint}</span>
+          </span>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => void save({ apiKey: "" })}
+            className="text-xs text-danger hover:underline disabled:opacity-60"
+          >
+            Remover
+          </button>
+        </div>
+      ) : serverKey ? (
+        <p className="text-xs text-muted">Sem chave própria: usando a chave do servidor.</p>
+      ) : null}
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (apiKey.trim()) void save({ apiKey });
+        }}
+      >
+        <input
+          type="password"
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          placeholder={keyHint ? "Trocar a chave (sk-ant-…)" : "sk-ant-…"}
+          aria-label="Chave da API"
+          autoComplete="off"
+          className="h-11 min-w-0 flex-1 rounded-lg border border-border bg-rail px-3 font-mono text-base text-text outline-none placeholder:text-muted focus:border-accent md:h-9 md:text-sm"
+        />
+        <button
+          type="submit"
+          disabled={saving || !apiKey.trim()}
+          className={`${buttonBase} bg-accent text-accent-ink disabled:opacity-60`}
+        >
+          {saving ? "Testando…" : "Salvar"}
+        </button>
+      </form>
+
+      <div>
+        <h3 className="mb-1.5 text-sm font-semibold text-text">Modelo</h3>
+        <div className="flex flex-col gap-1">
+          {AI_MODELS.map((m) => (
+            <label key={m.id} className="flex min-h-11 cursor-pointer items-start gap-2 rounded-lg px-1 py-1.5 hover:bg-card md:min-h-0">
+              <input
+                type="radio"
+                name="ai-model"
+                checked={model === m.id}
+                disabled={saving}
+                onChange={() => void save({ model: m.id })}
+                className="mt-0.5 size-4 accent-[var(--color-accent)]"
+              />
+              <span>
+                <span className="block text-[13px] text-text">{m.label}</span>
+                <span className="block text-xs text-muted">{m.hint}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {error && (
+        <p role="alert" className="text-[13px] text-danger">
+          {error}
+        </p>
+      )}
+      {saved && !error && <p className="text-[13px] text-hue-fern">Salvo.</p>}
+
+      <div className="flex justify-end">
+        <button type="button" onClick={onClose} className={`${buttonBase} text-text-soft hover:bg-card`}>
+          Fechar
+        </button>
+      </div>
+    </div>
   );
 }
 
