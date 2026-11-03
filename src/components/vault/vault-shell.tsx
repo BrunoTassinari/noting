@@ -66,7 +66,7 @@ function Layout({ children }: { children: ReactNode }) {
       }
     >
       {/* Ribbon (desktop) */}
-      <div className="hidden w-12 shrink-0 flex-col items-center gap-1 border-r border-border bg-rail py-2.5 md:flex">
+      <div className="hidden w-12 shrink-0 flex-col items-center gap-1 bg-rail py-2.5 md:flex">
         <button
           type="button"
           aria-label="Buscar (Ctrl K)"

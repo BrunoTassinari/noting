@@ -203,7 +203,7 @@ export function MobileHome() {
 
       <nav
         aria-label="Navegação"
-        className="flex shrink-0 items-center justify-around border-t border-border bg-rail px-2 pb-[max(10px,env(safe-area-inset-bottom))] pt-1.5"
+        className="flex shrink-0 items-center justify-around bg-rail px-2 pb-[max(10px,env(safe-area-inset-bottom))] pt-1.5"
       >
         <span
           aria-current="page"

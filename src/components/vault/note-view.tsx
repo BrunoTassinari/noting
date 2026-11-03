@@ -113,7 +113,7 @@ export function NoteView({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Cabeçalho do celular */}
-      <div className="flex h-[60px] shrink-0 items-center gap-1 border-b border-border bg-panel px-2 md:hidden">
+      <div className="flex h-[60px] shrink-0 items-center gap-1 bg-panel px-2 md:hidden">
         <Link
           href="/"
           aria-label="Abrir arquivos"
@@ -206,7 +206,7 @@ export function NoteView({
       />
 
       {/* Barra de status (desktop) */}
-      <div className="hidden h-7 shrink-0 items-center gap-4 border-t border-border bg-rail px-4 text-xs text-muted md:flex">
+      <div className="hidden h-7 shrink-0 items-center gap-4 bg-rail px-4 text-xs text-muted md:flex">
         <span>Ctrl K para buscar</span>
         <div className="flex-1" />
         <SaveIndicator status={status} />

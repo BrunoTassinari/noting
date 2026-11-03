@@ -20,7 +20,7 @@ export function MobileToolbar({ onFormat }: { onFormat: (kind: FormatKind) => vo
     <div
       role="toolbar"
       aria-label="Formatação"
-      className="flex shrink-0 items-center justify-between border-t border-border bg-panel px-2 pb-[max(8px,env(safe-area-inset-bottom))] pt-1.5 md:hidden"
+      className="flex shrink-0 items-center justify-between bg-panel px-2 pb-[max(8px,env(safe-area-inset-bottom))] pt-1.5 md:hidden"
     >
       {BUTTONS.map((b) => (
         <button

@@ -130,7 +130,7 @@ export function TabBar() {
   };
 
   return (
-    <div className="hidden h-10 shrink-0 items-center gap-1 border-b border-border bg-rail pl-1.5 pr-1.5 md:flex">
+    <div className="hidden h-10 shrink-0 items-center gap-1 bg-rail pl-1.5 pr-1.5 md:flex">
       <button
         type="button"
         aria-label={layout.left.open ? "Recolher lateral esquerda" : "Mostrar lateral esquerda"}
@@ -201,7 +201,7 @@ export function TabBar() {
               }}
               className={`group flex h-full min-w-[96px] max-w-[220px] flex-[1_1_200px] cursor-default select-none items-center gap-2 rounded-t-lg pl-3 pr-1.5 text-[13px] ${
                 on
-                  ? "border border-b-0 border-border bg-surface text-text-strong"
+                  ? "bg-surface text-text-strong"
                   : "text-muted hover:bg-card hover:text-text"
               } ${dragging === t.key ? "opacity-50" : ""}`}
             >

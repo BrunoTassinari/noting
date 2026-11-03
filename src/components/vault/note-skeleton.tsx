@@ -11,7 +11,7 @@ const LINES = ["92%", "78%", "86%", "40%", "0", "70%", "88%", "55%"];
 export function NoteSkeleton({ note }: { note: NoteMeta }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col" aria-busy="true" aria-label={`Abrindo ${note.title}`}>
-      <div className="flex h-[60px] shrink-0 items-center gap-1 border-b border-border bg-panel px-2 md:hidden">
+      <div className="flex h-[60px] shrink-0 items-center gap-1 bg-panel px-2 md:hidden">
         <Link href="/" aria-label="Abrir arquivos" className="flex size-11 items-center justify-center rounded-[10px] text-text">
           <MenuIcon size={22} />
         </Link>

@@ -99,11 +99,9 @@ export function SidePanel({ side }: { side: Side }) {
       aria-label={`Lateral ${sideName(side)}`}
       data-side={side}
       style={{ width: s.width }}
-      className={`relative hidden min-h-0 shrink-0 flex-col bg-panel md:flex ${
-        side === "left" ? "border-r" : "border-l"
-      } border-border`}
+      className="relative hidden min-h-0 shrink-0 flex-col bg-panel md:flex"
     >
-      <div role="tablist" aria-label={`Painéis da lateral ${sideName(side)}`} className="flex h-10 shrink-0 items-center gap-0.5 border-b border-border px-2">
+      <div role="tablist" aria-label={`Painéis da lateral ${sideName(side)}`} className="flex h-10 shrink-0 items-center gap-0.5 px-2">
         {keys.map((key) => {
           const { label, Icon, tone } = PANELS[key];
           const on = key === active;

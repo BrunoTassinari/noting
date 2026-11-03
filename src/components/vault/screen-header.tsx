@@ -9,7 +9,7 @@ import { TabHistoryNav } from "./tabs";
 export function ScreenHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {
   return (
     <>
-      <div className="flex h-[60px] shrink-0 items-center gap-1 border-b border-border bg-panel px-2 md:h-12 md:gap-2 md:border-b-0 md:bg-surface md:px-3">
+      <div className="flex h-[60px] shrink-0 items-center gap-1 bg-panel px-2 md:h-12 md:gap-2 md:border-b-0 md:bg-surface md:px-3">
         <Link
           href="/"
           aria-label="Voltar para as notas"
