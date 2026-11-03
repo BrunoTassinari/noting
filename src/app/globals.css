@@ -11,45 +11,46 @@
      muted = ink-4; faint = ink-5; accent = Rose.
    Tema escuro por padrão; o claro sobrescreve as variáveis (ver abaixo). */
 @theme static {
-  --color-bg: #232222;
-  --color-rail: #201f1f;
-  --color-panel: #232222;
-  --color-surface: #2e2e2e;
-  --color-card: #383737;
-  --color-active: #46393c;
-  --color-code: #232222;
-  --color-border: #414040;
-  --color-border-strong: #555454;
-  --color-divider: #393838;
-  --color-text: #d7cec8;
-  --color-text-strong: #eae2dc;
-  --color-text-soft: #c5c3c0;
-  --color-body: #d7cec8;
-  --color-quote: #b5b6b9;
-  --color-muted: #a3a8b4;
-  --color-faint: #9196a3;
-  --color-accent: #dd7b8f;
-  --color-accent-ink: #232222;
+  /* Escuro: paleta Coal do Firelight (mais contraste). */
+  --color-bg: #1b1a19;
+  --color-rail: #171615;
+  --color-panel: #1b1a19;
+  --color-surface: #232222;
+  --color-card: #2c2b2b;
+  --color-active: #3d2f33;
+  --color-code: #1b1a19;
+  --color-border: #353434;
+  --color-border-strong: #484746;
+  --color-divider: #2c2b2b;
+  --color-text: #e6d7cd;
+  --color-text-strong: #f8eae0;
+  --color-text-soft: #cbc6c3;
+  --color-body: #e6d7cd;
+  --color-quote: #b3b5bc;
+  --color-muted: #9ba3b8;
+  --color-faint: #818aa1;
+  --color-accent: #f06b8a;
+  --color-accent-ink: #1b1a19;
   --color-danger: #ff7b7b;
-  --color-today: #403638;
-  --color-code-text: #d7cec8;
-  --color-syn-keyword: #ceaae6;
-  --color-syn-string: #a2c88b;
-  --color-syn-number: #f1bb90;
-  --color-syn-function: #98b7ec;
-  --color-syn-type: #f1ddad;
+  --color-today: #3a2c30;
+  --color-code-text: #e6d7cd;
+  --color-syn-keyword: #d5a3f5;
+  --color-syn-string: #99cc78;
+  --color-syn-number: #ffb57a;
+  --color-syn-function: #8db6ff;
+  --color-syn-type: #f8dc99;
 
   /* Matizes do Firelight (rosa → lilás), para títulos, estados e gráficos. */
-  --color-hue-rose: #dd7b8f;
-  --color-hue-ember: #eb8b86;
-  --color-hue-coral: #ed9d83;
-  --color-hue-apricot: #f1bb90;
-  --color-hue-honey: #f1ddad;
-  --color-hue-fern: #a2c88b;
-  --color-hue-verdigris: #81cfc3;
-  --color-hue-cornflower: #98b7ec;
-  --color-hue-lilac: #cac8ed;
-  --color-hue-orchid: #ceaae6;
+  --color-hue-rose: #f06b8a;
+  --color-hue-ember: #ff7c78;
+  --color-hue-coral: #ff936f;
+  --color-hue-apricot: #ffb57a;
+  --color-hue-honey: #f8dc99;
+  --color-hue-fern: #99cc78;
+  --color-hue-verdigris: #62d4c5;
+  --color-hue-cornflower: #8db6ff;
+  --color-hue-lilac: #c9c6f8;
+  --color-hue-orchid: #d5a3f5;
 
   /* Papéis do editor. Títulos neutros (sem cor por nível). */
   --color-h1: var(--color-text-strong);
@@ -59,13 +60,13 @@
   --color-h5: var(--color-text-strong);
   --color-h6: var(--color-text-strong);
   --color-link: var(--color-hue-cornflower);
-  --color-tag-text: #c5c3c0;
-  --color-tag-bg: #383837;
-  --color-quote-bg: #383334;
-  --color-quote-bar: #9e5f6c;
-  --color-selection: #53535c;
-  --color-highlight: #6c6657;
-  --color-checkbox: #6a6a69;
+  --color-tag-text: #cbc6c3;
+  --color-tag-bg: #2c2b2b;
+  --color-quote-bg: #2e2326;
+  --color-quote-bar: #a85468;
+  --color-selection: #45454f;
+  --color-highlight: #5e5848;
+  --color-checkbox: #5d5c5c;
   --color-task-doing: var(--color-hue-apricot);
   --color-task-moved: var(--color-hue-cornflower);
   --color-task-event: var(--color-hue-verdigris);

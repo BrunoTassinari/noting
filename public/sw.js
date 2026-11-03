@@ -6,7 +6,7 @@
 // Mudou offline.html ou capture-queue.js? Suba a versão do CACHE para os
 // aparelhos baixarem a cópia nova.
 
-const CACHE = "noting-shell-v3";
+const CACHE = "noting-shell-v4";
 const OFFLINE_URL = "/offline.html";
 const PRECACHE = [OFFLINE_URL, "/capture-queue.js", "/icons/icon-192.png"];
 

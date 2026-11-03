@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#232222", // trocado pelo script do tema (claro: #fef8f6)
+  themeColor: "#1b1a19", // trocado pelo script do tema (claro: #fef8f6)
   width: "device-width",
   initialScale: 1,
   // Ocupa a tela toda no iPhone (safe areas tratadas no CSS) e, no Android,
