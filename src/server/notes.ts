@@ -113,12 +113,14 @@ export async function createNote(
   let title = base;
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
-      const [row] = await db
-        .insert(notes)
-        .values({ id: input.id, userId, path, title })
-        .returning(metaColumns);
+      // Em paralelo (uma ida ao banco a menos): a nota é nova e vazia, então
+      // quem a menciona já menciona antes de ela existir.
+      const [[row], mentioners] = await Promise.all([
+        db.insert(notes).values({ id: input.id, userId, path, title }).returning(metaColumns),
+        mentionersOf(db, userId, title),
+      ]);
       // [[links]] que já apontavam para este nome passam a valer.
-      await rebuildLinks(db, userId, await mentionersOf(db, userId, row.title));
+      await rebuildLinks(db, userId, mentioners);
       return toMeta(row);
     } catch (err) {
       if (uniqueConstraint(err) !== "notes_unique_title_per_folder") throw err;
@@ -177,7 +179,7 @@ export async function saveConflictCopy(userId: string, id: string, body: string)
     .insert(notes)
     .values({ userId, path: original.path, title, body })
     .returning(metaColumns);
-  await rebuildLinks(db, userId, [row.id]);
+  await rebuildLinks(db, userId, [row.id], [{ id: row.id, path: row.path, body }]);
   return toMeta(row);
 }
 
