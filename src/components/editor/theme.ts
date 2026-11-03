@@ -112,7 +112,17 @@ export const editorTheme = EditorView.theme(
     },
 
     // Listas e tarefas
-    ".cm-bullet": { color: c.muted, display: "inline-block", minWidth: "0.9em" },
+    // Ponto redondo do item de lista (18px de largura, ver live-preview.ts).
+    ".cm-bullet": {
+      display: "inline-block",
+      width: "18px",
+      height: "1em",
+      textIndent: "0",
+      verticalAlign: "-0.12em",
+      backgroundImage: `radial-gradient(circle at 6px 55%, ${c.muted} 2.6px, transparent 3.2px)`,
+    },
+    ".cm-ol-mark": { color: c.muted, display: "inline-block", width: "26px", textIndent: "0", fontVariantNumeric: "tabular-nums" },
+    ".cm-li": { paddingTop: "2px !important", paddingBottom: "2px !important" },
     ".cm-list-mark": { color: c.muted },
     ".cm-task-box": {
       display: "inline-flex",
@@ -120,8 +130,9 @@ export const editorTheme = EditorView.theme(
       justifyContent: "center",
       width: "16px",
       height: "16px",
-      marginRight: "8px",
+      marginRight: "10px", // 16 + 10 = largura do marcador de tarefa (live-preview.ts)
       verticalAlign: "-2px",
+      textIndent: "0",
       borderRadius: "3px",
       border: `1.5px solid ${c.box}`,
       cursor: "pointer",

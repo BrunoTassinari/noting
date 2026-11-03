@@ -24,9 +24,42 @@ class BulletWidget extends WidgetType {
   toDOM() {
     const el = document.createElement("span");
     el.className = "cm-bullet";
-    el.textContent = "•";
+    el.setAttribute("aria-hidden", "true");
     return el;
   }
+}
+
+/** "1." de lista numerada, com largura fixa (o texto alinha depois dele). */
+class OrderedWidget extends WidgetType {
+  constructor(readonly label: string) {
+    super();
+  }
+  eq(o: OrderedWidget) {
+    return o.label === this.label;
+  }
+  toDOM() {
+    const el = document.createElement("span");
+    el.className = "cm-ol-mark";
+    el.textContent = this.label;
+    return el;
+  }
+}
+
+// Listas: recuo por nível, texto quebrado alinhado depois do marcador
+// (recuo deslocado) e linhas-guia verticais nos níveis de cima, como no
+// Obsidian. Larguras em px do marcador de cada tipo (ver theme.ts).
+const LIST_INDENT = 26;
+const MARK_W = { bullet: 18, ordered: 26, task: 26 } as const;
+
+function listLineStyle(depth: number, markW: number): string {
+  const guides = Array.from({ length: depth }, (_, i) => `${i * LIST_INDENT + 8}px 0`);
+  let style = `padding-left:${depth * LIST_INDENT + markW}px;text-indent:-${markW}px;`;
+  if (guides.length) {
+    style +=
+      `background-image:${guides.map(() => "linear-gradient(var(--color-border-strong),var(--color-border-strong))").join(",")};` +
+      `background-size:1px 100%;background-repeat:no-repeat;background-position:${guides.join(",")};`;
+  }
+  return style;
 }
 
 const ICONS: Partial<Record<TaskState, string>> = {
@@ -113,6 +146,9 @@ function build(view: EditorView, focused: boolean): DecorationSet {
   const { state } = view;
   const active = focused ? activeLines(state) : new Set<number>();
   const isActive = (pos: number) => active.has(state.doc.lineAt(pos).number);
+  /** Alguma seleção toca o trecho [from, to]? */
+  const cursorIn = (from: number, to: number) =>
+    focused && state.selection.ranges.some((r) => r.from <= to && r.to >= from);
   const decos: Range<Decoration>[] = [];
   const lineClass = (pos: number, cls: string) =>
     decos.push(Decoration.line({ class: cls }).range(state.doc.lineAt(pos).from));
@@ -199,53 +235,68 @@ function build(view: EditorView, focused: boolean): DecorationSet {
             }
             return;
           case "ListMark": {
-            const isBullet = node.node.parent?.parent?.name === "BulletList";
             const item = node.node.parent;
-            const hasTask = item?.getChild("Task");
+            if (!item || item.name !== "ListItem") return;
+            const isBullet = item.parent?.name === "BulletList";
             const line = state.doc.lineAt(node.from);
+            const taskMarker = item.getChild("Task")?.getChild("TaskMarker") ?? null;
             // "- [>] texto": tarefa com estado do Bullet Journal.
             const extraFrom = node.to + 1;
             const extra =
-              isBullet && !hasTask && state.doc.sliceString(node.to, extraFrom) === " "
+              isBullet && !taskMarker && state.doc.sliceString(node.to, extraFrom) === " "
                 ? EXTRA_TASK_RE.exec(state.doc.sliceString(extraFrom, line.to))
                 : null;
             if (extra) {
-              const st = normalizeState(extra[1]);
-              const cls = TASK_LINE_CLASS[st];
+              const cls = TASK_LINE_CLASS[normalizeState(extra[1])];
               if (cls) lineClass(node.from, cls);
             }
-            if ((hasTask || extra) && !isActive(node.from)) {
-              // "- [ ] tarefa": some o "- ", fica só a caixinha.
-              decos.push(hide.range(node.from, Math.min(node.to + 1, line.to)));
-              if (extra) {
-                const st = normalizeState(extra[1]);
-                decos.push(
-                  Decoration.replace({ widget: new CheckboxWidget(st, extraFrom) }).range(
-                    extraFrom,
-                    extraFrom + 3,
-                  ),
-                );
-              }
-            } else if (isBullet && !isActive(node.from)) {
-              decos.push(Decoration.replace({ widget: new BulletWidget() }).range(node.from, node.to));
-            } else {
+            const isTask = Boolean(taskMarker || extra);
+            // Fim do marcador ("- ", "1. ", "- [ ] ") com o espaço depois.
+            const markEnd = Math.min(
+              line.to,
+              (taskMarker ? taskMarker.to : extra ? extraFrom + 3 : node.to) + 1,
+            );
+            // Como no Obsidian: a marcação só aparece com o cursor nela (ou
+            // na indentação); no resto da linha o item continua desenhado.
+            const showRaw = cursorIn(line.from, markEnd);
+            if (showRaw) {
               decos.push(Decoration.mark({ class: "cm-list-mark" }).range(node.from, node.to));
+              return;
+            }
+            let depth = 0;
+            for (let n = item.parent; n; n = n.parent) if (n.name === "ListItem") depth++;
+            const kind = isTask ? "task" : isBullet ? "bullet" : "ordered";
+            decos.push(
+              Decoration.line({ class: "cm-li", attributes: { style: listLineStyle(depth, MARK_W[kind]) } }).range(
+                line.from,
+              ),
+            );
+            if (node.from > line.from) decos.push(hide.range(line.from, node.from)); // indentação
+            if (kind === "task") {
+              // "- " some; a caixinha (com o espaço depois) vira o widget.
+              decos.push(hide.range(node.from, Math.min(node.to + 1, line.to)));
+              const boxFrom = taskMarker ? taskMarker.from : extraFrom;
+              const st = taskMarker
+                ? /\[[xX]\]/.test(state.doc.sliceString(taskMarker.from, taskMarker.to))
+                  ? "x"
+                  : " "
+                : normalizeState(extra![1]);
+              decos.push(
+                Decoration.replace({ widget: new CheckboxWidget(st as TaskState, boxFrom) }).range(boxFrom, markEnd),
+              );
+            } else if (kind === "bullet") {
+              decos.push(Decoration.replace({ widget: new BulletWidget() }).range(node.from, markEnd));
+            } else {
+              const label = state.doc.sliceString(node.from, node.to);
+              decos.push(Decoration.replace({ widget: new OrderedWidget(label) }).range(node.from, markEnd));
             }
             return;
           }
           case "TaskMarker": {
+            // Desenhado junto com o ListMark (acima); aqui só a classe da linha.
             const text = state.doc.sliceString(node.from, node.to);
-            const st: TaskState = /\[[xX]\]/.test(text) ? "x" : " ";
-            const cls = TASK_LINE_CLASS[st];
+            const cls = TASK_LINE_CLASS[/\[[xX]\]/.test(text) ? "x" : " "];
             if (cls) lineClass(node.from, cls);
-            if (!isActive(node.from)) {
-              decos.push(
-                Decoration.replace({ widget: new CheckboxWidget(st, node.from) }).range(
-                  node.from,
-                  node.to,
-                ),
-              );
-            }
             return;
           }
           case "Link": {
