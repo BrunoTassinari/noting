@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { parseDay } from "@/lib/bujo";
 import { requireUser } from "@/lib/session";
 import { NoteError } from "@/server/notes";
-import { applyHabitsToMonth, cleanHabits, saveHabits } from "@/server/settings";
+import type { Prefs } from "@/lib/prefs";
+import { applyHabitsToMonth, cleanHabits, saveHabits, savePrefs } from "@/server/settings";
 
 export type SaveHabitsResult = { ok: true; habits: string[]; monthNoteId: string | null } | { ok: false; error: string };
 
@@ -23,6 +24,16 @@ export async function saveHabitsAction(habits: unknown, applyToMonthOf?: string)
     return { ok: true, habits: clean, monthNoteId };
   } catch (err) {
     if (err instanceof NoteError) return { ok: false, error: err.message };
+    console.error(err);
+    return { ok: false, error: "Não foi possível salvar. Tente de novo." };
+  }
+}
+
+export async function savePrefsAction(prefs: Prefs): Promise<{ ok: true; prefs: Prefs } | { ok: false; error: string }> {
+  const user = await requireUser();
+  try {
+    return { ok: true, prefs: await savePrefs(user.id, prefs) };
+  } catch (err) {
     console.error(err);
     return { ok: false, error: "Não foi possível salvar. Tente de novo." };
   }

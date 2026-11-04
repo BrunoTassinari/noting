@@ -40,7 +40,7 @@ const LIST_KEY = "noting-sidebar-list";
 type Ref = { noteId: string; line: number; raw: string };
 
 export function ListsPanel() {
-  const { showError, goToNote, createNote, notes } = useVault();
+  const { showError, goToNote, createNote, notes, prefs } = useVault();
   const [data, setData] = useState<ListsPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(() => {
@@ -164,7 +164,8 @@ export function ListsPanel() {
         icon: <TrashIcon size={15} />,
         danger: true,
         onSelect: () => {
-          if (window.confirm(`Excluir “${itemLabel(i.title)}” da lista?`)) void apply(deleteListItemAction(refOf(i)));
+          if (!prefs.confirmDeleteListItem || window.confirm(`Excluir “${itemLabel(i.title)}” da lista?`))
+            void apply(deleteListItemAction(refOf(i)));
         },
       },
     ];

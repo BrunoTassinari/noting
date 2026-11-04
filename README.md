@@ -41,11 +41,11 @@ navegador do PC e no celular (PWA).
    `SIGNUP_CODE`, um código de convite que libera "Criar conta" na tela de
    login (sem ela, o cadastro fica desligado).
    O Assistente não precisa de variável: cada pessoa salva a própria chave
-   da API da Anthropic em **Configurações › Assistente** (fica cifrada com o
+   da API da Anthropic em **Configurações › API** (fica cifrada com o
    `BETTER_AUTH_SECRET`; se trocar o segredo, salve a chave de novo). Não
    existe chave compartilhada: ninguém usa os tokens de outra pessoa.
    Para conversar pelo app do Claude (com a assinatura, sem API paga), gere
-   um token em **Configurações › Conector Claude** e adicione
+   um token em **Configurações › Claude** e adicione
    `https://seu-app/api/mcp` como conector personalizado no Claude.
 4. Aplique as migrations e crie o usuário no banco de produção, rodando
    localmente com o `DATABASE_URL` de produção:

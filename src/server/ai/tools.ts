@@ -166,7 +166,7 @@ async function save(userId: string, note: NoteMeta, before: string, next: string
 }
 
 const PRIVATE_MSG =
-  "Essa nota está na pasta Pessoal, que é privada: o Claude não tem acesso (a pessoa pode liberar em Configurações › Conector Claude).";
+  "Essa nota está na pasta Pessoal, que é privada: o Claude não tem acesso (a pessoa pode liberar em Configurações › Claude).";
 
 export async function runNoteTool(
   userId: string,

@@ -415,7 +415,7 @@ function BodyEditor({
   onCursorLine: (line: number) => void;
   onReady: (api: EditorApi) => void;
 }) {
-  const { notes, createNote, goToNote } = useVault();
+  const { notes, createNote, goToNote, prefs } = useVault();
   const [ready, setReady] = useState(false);
 
   const openWikilink = (target: string, newTab: boolean) => {
@@ -424,9 +424,16 @@ function BodyEditor({
       if (found.id !== note.id || newTab) goToNote(found.id, newTab);
       return;
     }
-    // Como no Obsidian: link para nota inexistente cria a nota (na raiz).
+    // Como no Obsidian: link para nota inexistente cria a nota (na raiz ou na
+    // pasta da nota atual, conforme Configurações › Geral). "Pasta/Nome" usa a pasta.
     const title = wikilinkTitle(target);
-    if (title) createNote("", title);
+    const explicit = target.split("|")[0].split("#")[0];
+    const folder = explicit.includes("/")
+      ? explicit.slice(0, explicit.lastIndexOf("/"))
+      : prefs.newLinkedNoteFolder === "same"
+        ? note.path
+        : "";
+    if (title) createNote(folder, title);
   };
 
   return (

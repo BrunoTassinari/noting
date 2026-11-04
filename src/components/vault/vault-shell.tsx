@@ -1,5 +1,6 @@
 "use client";
 
+import type { Prefs } from "@/lib/prefs";
 import { useParams, usePathname } from "next/navigation";
 import { type ReactNode, useEffect } from "react";
 import { signOut } from "@/app/login/actions";
@@ -27,14 +28,16 @@ import { useVault, VaultProvider } from "./vault-context";
 export function VaultShell({
   notes,
   habits,
+  prefs,
   children,
 }: {
   notes: NoteMeta[];
   habits: string[];
+  prefs: Prefs;
   children: ReactNode;
 }) {
   return (
-    <VaultProvider notes={notes} habits={habits}>
+    <VaultProvider notes={notes} habits={habits} prefs={prefs}>
       <Layout>{children}</Layout>
     </VaultProvider>
   );

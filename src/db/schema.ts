@@ -205,6 +205,8 @@ export const userSettings = pgTable("user_settings", {
   mcpTokenHash: text("mcp_token_hash").unique(),
   /** O Claude (conector e assistente) pode ler a pasta Pessoal? */
   aiAllowPrivate: boolean("ai_allow_private").notNull().default(false),
+  /** Preferências gerais (ver src/lib/prefs.ts). */
+  prefs: jsonb("prefs").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()

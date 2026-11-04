@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { notes, userSettings } from "@/db/schema";
 import { type Day, monthlyRef } from "@/lib/bujo";
+import { cleanPrefs, type Prefs } from "@/lib/prefs";
 import { NoteError } from "./notes";
 import { sha256Hex } from "@/lib/hash";
 import { updateNoteBody } from "./notes";
@@ -73,4 +74,18 @@ export async function applyHabitsToMonth(userId: string, d: Day, habits: string[
     if (res.ok) return row.id;
   }
   throw new NoteError("A nota do mês mudou enquanto gravava. Tente de novo.");
+}
+
+export async function getPrefs(userId: string): Promise<Prefs> {
+  const [row] = await db.select({ prefs: userSettings.prefs }).from(userSettings).where(eq(userSettings.userId, userId));
+  return cleanPrefs(row?.prefs);
+}
+
+export async function savePrefs(userId: string, input: unknown): Promise<Prefs> {
+  const prefs = cleanPrefs(input);
+  await db
+    .insert(userSettings)
+    .values({ userId, prefs })
+    .onConflictDoUpdate({ target: userSettings.userId, set: { prefs } });
+  return prefs;
 }

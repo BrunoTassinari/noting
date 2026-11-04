@@ -9,7 +9,10 @@ import {
   setAllowPrivateAction,
   saveAiSettingsAction,
 } from "@/app/(vault)/assistant-actions";
-import { saveHabitsAction } from "@/app/(vault)/settings-actions";
+import { saveHabitsAction, savePrefsAction } from "@/app/(vault)/settings-actions";
+import { setThemePref, useThemePref } from "@/components/theme";
+import type { Prefs } from "@/lib/prefs";
+import { useVault } from "./vault-context";
 import { ArrowLeftIcon, ArrowRightIcon, CloseIcon, PlusIcon } from "@/components/icons";
 import { isoDay, MONTHS, today } from "@/lib/bujo";
 import { setUserHabits } from "@/lib/user-habits";
@@ -51,15 +54,16 @@ function SettingsTabs({
   onClose: () => void;
   onSaved: (monthNoteId: string | null) => void;
 }) {
-  const [tab, setTab] = useState<"habits" | "claude" | "ai">("habits");
+  const [tab, setTab] = useState<"general" | "habits" | "claude" | "ai">("general");
   return (
     <>
       <div role="tablist" aria-label="Seções" className="mb-4 flex gap-1 rounded-lg bg-rail p-1">
         {(
           [
+            ["general", "Geral"],
             ["habits", "Hábitos"],
-            ["claude", "Conector Claude"],
-            ["ai", "Chave da API"],
+            ["claude", "Claude"],
+            ["ai", "API"],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -74,7 +78,9 @@ function SettingsTabs({
           </button>
         ))}
       </div>
-      {tab === "habits" ? (
+      {tab === "general" ? (
+        <GeneralForm onClose={onClose} />
+      ) : tab === "habits" ? (
         <HabitsForm initial={habits} onCancel={onClose} onSaved={onSaved} />
       ) : tab === "claude" ? (
         <ConnectorForm onClose={onClose} />
@@ -82,6 +88,107 @@ function SettingsTabs({
         <AiForm onClose={onClose} />
       )}
     </>
+  );
+}
+
+function Switch({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
+  return (
+    <label className="flex min-h-11 cursor-pointer items-start gap-2.5 text-[13px] text-text md:min-h-0">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-0.5 size-4 shrink-0 accent-[var(--color-accent)]" />
+      <span>
+        {label}
+        {hint && <span className="block text-xs text-muted">{hint}</span>}
+      </span>
+    </label>
+  );
+}
+
+/** Preferências gerais: confirmações, onde nascem notas, tema. Salva na hora. */
+function GeneralForm({ onClose }: { onClose: () => void }) {
+  const { prefs, setPrefs, showError } = useVault();
+  const theme = useThemePref();
+  const update = (patch: Partial<Prefs>) => {
+    const next = { ...prefs, ...patch };
+    setPrefs(next);
+    void savePrefsAction(next)
+      .catch(() => null)
+      .then((r) => {
+        if (!r?.ok) showError(r?.error ?? "Não foi possível salvar a preferência.");
+      });
+  };
+  const section = "text-xs font-semibold uppercase tracking-[0.04em] text-muted";
+  return (
+    <div className="flex max-h-[65vh] flex-col gap-4 overflow-y-auto">
+      <div className="flex flex-col gap-2">
+        <h3 className={section}>Confirmações</h3>
+        <Switch
+          checked={prefs.confirmDeleteNote}
+          onChange={(v) => update({ confirmDeleteNote: v })}
+          label="Perguntar antes de apagar uma nota"
+          hint="Desligado: vai direto para a lixeira (dá para restaurar por 30 dias)."
+        />
+        <Switch checked={prefs.confirmDeleteFolder} onChange={(v) => update({ confirmDeleteFolder: v })} label="Perguntar antes de apagar uma pasta" />
+        <Switch checked={prefs.confirmDeleteListItem} onChange={(v) => update({ confirmDeleteListItem: v })} label="Perguntar antes de excluir item de lista" />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <h3 className={section}>Notas novas</h3>
+        <div className="text-[13px] text-text">Ao clicar num [[link]] de nota que não existe, criar a nota:</div>
+        <div className="flex gap-1 rounded-lg bg-rail p-1">
+          {(
+            [
+              ["root", "Na raiz"],
+              ["same", "Na pasta da nota atual"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={prefs.newLinkedNoteFolder === key}
+              onClick={() => update({ newLinkedNoteFolder: key })}
+              className={`h-9 flex-1 rounded-md text-[13px] md:h-8 ${prefs.newLinkedNoteFolder === key ? "bg-active text-text-strong" : "text-muted"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <Switch
+          checked={prefs.openPromotedNote}
+          onChange={(v) => update({ openPromotedNote: v })}
+          label="“Virar nota” abre a nota nova"
+          hint="Desligado: você continua no dia, e a linha vira o link."
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <h3 className={section}>Aparência</h3>
+        <div className="flex gap-1 rounded-lg bg-rail p-1">
+          {(
+            [
+              ["system", "Sistema"],
+              ["light", "Claro"],
+              ["dark", "Escuro"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={theme === key}
+              onClick={() => setThemePref(key)}
+              className={`h-9 flex-1 rounded-md text-[13px] md:h-8 ${theme === key ? "bg-active text-text-strong" : "text-muted"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <button type="button" onClick={onClose} className={`${buttonBase} text-text-soft hover:bg-card`}>
+          Fechar
+        </button>
+      </div>
+    </div>
   );
 }
 

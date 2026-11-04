@@ -64,6 +64,13 @@
       "when": 1793754249759,
       "tag": "0008_ai_private",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793754446835,
+      "tag": "0009_prefs",
+      "breakpoints": true
     }
   ]
 }

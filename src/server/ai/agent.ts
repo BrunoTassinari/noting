@@ -38,7 +38,7 @@ export class AgentError extends Error {}
 
 /** Mensagem de erro da API em português. */
 export function apiErrorMessage(err: unknown): string {
-  if (err instanceof Anthropic.AuthenticationError) return "Chave da API inválida. Confira em Configurações › Assistente.";
+  if (err instanceof Anthropic.AuthenticationError) return "Chave da API inválida. Confira em Configurações › API.";
   if (err instanceof Anthropic.PermissionDeniedError) return "A chave não tem permissão para esse modelo.";
   if (err instanceof Anthropic.RateLimitError) return "Limite de uso da API atingido. Espere um pouco e tente de novo.";
   if (err instanceof Anthropic.BadRequestError) {

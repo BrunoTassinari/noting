@@ -73,7 +73,7 @@ export async function POST(request: Request) {
   const config = await getAiConfig(userId);
   if (!config) {
     return NextResponse.json(
-      { error: "Configure a chave da API da Anthropic em Configurações › Assistente." },
+      { error: "Configure a chave da API da Anthropic em Configurações › API." },
       { status: 400 },
     );
   }

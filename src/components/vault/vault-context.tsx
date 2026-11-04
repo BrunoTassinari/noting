@@ -1,5 +1,6 @@
 "use client";
 
+import type { Prefs } from "@/lib/prefs";
 import { useParams, useRouter } from "next/navigation";
 import {
   createContext,
@@ -62,6 +63,9 @@ type Vault = {
   openSearch: () => void;
   /** Configurações da pessoa (hábitos). */
   openSettings: () => void;
+  /** Preferências gerais (Configurações › Geral). */
+  prefs: Prefs;
+  setPrefs: (prefs: Prefs) => void;
   openMove: (note: NoteMeta) => void;
   openDelete: (note: NoteMeta) => void;
   /** Renomear pasta = mover todas as notas dela (e das subpastas). */
@@ -108,12 +112,15 @@ type DialogState = { at?: string } & (
 export function VaultProvider({
   notes,
   habits,
+  prefs: serverPrefs,
   children,
 }: {
   notes: NoteMeta[];
   habits: string[];
+  prefs: Prefs;
   children: ReactNode;
 }) {
+  const [prefs, setPrefs] = useState(serverPrefs);
   // Hábitos configurados: o editor e os modelos de nota leem do módulo.
   setUserHabits(habits);
   const params = useParams<{ id?: string }>();
@@ -261,6 +268,31 @@ export function VaultProvider({
     [openHref],
   );
 
+  /** Move a nota para a lixeira (com ou sem confirmação antes). */
+  const deleteNoteNow = async (note: NoteMeta): Promise<string | null> => {
+    const { id } = note;
+    await whenCreated(id).catch(() => {});
+    // Fecha as abas da nota antes; se era a aberta, o servidor leva para
+    // a aba vizinha (desktop) ou para a lista (celular).
+    const next = pruneNotes(new Set([id]));
+    const desktop = window.matchMedia("(min-width: 768px)").matches;
+    const goTo = id === activeId ? (desktop ? (next ?? "/") : "/") : undefined;
+    const err = actionError(await deleteNoteAction(id, goTo));
+    if (err) return err;
+    forgetCachedNote(id);
+    return null;
+  };
+
+  const deleteFolderNow = async (path: string): Promise<string | null> => {
+    const ids = new Set(folderNotes(path).map((n) => n.id));
+    const err = actionError(await deleteFolderAction(path));
+    if (err) return err;
+    const next = pruneNotes(ids);
+    ids.forEach((id) => forgetCachedNote(id));
+    if (activeId && ids.has(activeId)) router.push(next ?? "/");
+    return null;
+  };
+
   const value: Vault = {
     notes: allNotes,
     folders,
@@ -277,9 +309,23 @@ export function VaultProvider({
     goToNote,
     openHref,
     openRenameFolder: (path) => setDialog({ kind: "renameFolder", path, at: activeId }),
-    openDeleteFolder: (path) => setDialog({ kind: "deleteFolder", path, at: activeId }),
+    openDeleteFolder: (path) => {
+      if (prefs.confirmDeleteFolder) setDialog({ kind: "deleteFolder", path, at: activeId });
+      else
+        void deleteFolderNow(path).then((err) =>
+          showError(err ?? `Pasta “${path}” movida para a lixeira.`),
+        );
+    },
     openMove: (note) => setDialog({ kind: "move", note, at: activeId }),
-    openDelete: (note) => setDialog({ kind: "delete", note, at: activeId }),
+    openDelete: (note) => {
+      if (prefs.confirmDeleteNote) setDialog({ kind: "delete", note, at: activeId });
+      else
+        void deleteNoteNow(note).then((err) =>
+          showError(err ?? `“${note.title}” movida para a lixeira.`),
+        );
+    },
+    prefs,
+    setPrefs,
     showError,
     reportRelinked,
   };
@@ -349,18 +395,9 @@ export function VaultProvider({
         confirmLabel="Mover para a lixeira"
         onConfirm={async () => {
           if (dialog.kind !== "delete") return null;
-          const { id } = dialog.note;
-          await whenCreated(id).catch(() => {});
-          // Fecha as abas da nota antes; se era a aberta, o servidor leva para
-          // a aba vizinha (desktop) ou para a lista (celular).
-          const next = pruneNotes(new Set([id]));
-          const desktop = window.matchMedia("(min-width: 768px)").matches;
-          const goTo = id === activeId ? (desktop ? (next ?? "/") : "/") : undefined;
-          const err = actionError(await deleteNoteAction(id, goTo));
-          if (err) return err;
-          close();
-          forgetCachedNote(id);
-          return null;
+          const err = await deleteNoteNow(dialog.note);
+          if (!err) close();
+          return err;
         }}
       />
 
@@ -405,14 +442,9 @@ export function VaultProvider({
         confirmLabel="Mover para a lixeira"
         onConfirm={async () => {
           if (dialog.kind !== "deleteFolder") return null;
-          const ids = new Set(folderNotes(dialog.path).map((n) => n.id));
-          const err = actionError(await deleteFolderAction(dialog.path));
-          if (err) return err;
-          const next = pruneNotes(ids);
-          close();
-          ids.forEach((id) => forgetCachedNote(id));
-          if (activeId && ids.has(activeId)) router.push(next ?? "/");
-          return null;
+          const err = await deleteFolderNow(dialog.path);
+          if (!err) close();
+          return err;
         }}
       />
 

@@ -51,7 +51,7 @@ function PromoteForm({
   noteId: string;
   editor: React.RefObject<EditorApi | null>;
 }) {
-  const { folders, notes, showError, goToNote } = useVault();
+  const { folders, notes, showError, goToNote, prefs } = useVault();
   const { plan, expected } = request;
   const [title, setTitle] = useState(plan.title);
   const [folder, setFolder] = useState(() => {
@@ -61,7 +61,7 @@ function PromoteForm({
       return "Conhecimento";
     }
   });
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(prefs.openPromotedNote);
   const [busy, setBusy] = useState(false);
   const areas = acervoAreas(folders);
   const acervoFolders = folders.filter((f) => spaceOf(f) === "acervo");
