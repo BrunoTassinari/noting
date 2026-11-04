@@ -13,11 +13,19 @@ const MAX_HABIT_LENGTH = 40;
 
 /** Hábitos da pessoa (lista vazia se nunca configurou). */
 export async function getHabits(userId: string): Promise<string[]> {
-  const [row] = await db
-    .select({ habits: userSettings.habits })
-    .from(userSettings)
-    .where(eq(userSettings.userId, userId));
-  return Array.isArray(row?.habits) ? row.habits : [];
+  try {
+    const [row] = await db
+      .select({ habits: userSettings.habits })
+      .from(userSettings)
+      .where(eq(userSettings.userId, userId));
+    return Array.isArray(row?.habits) ? row.habits : [];
+  } catch (err) {
+    if (missingSchema(err)) {
+      console.error("Hábitos indisponíveis: rode `npm run db:migrate` no banco.", err);
+      return [];
+    }
+    throw err;
+  }
 }
 
 /** Limpa a lista: sem vazios, sem repetidos, sem quebra de linha, tamanho máximo. */
@@ -76,9 +84,26 @@ export async function applyHabitsToMonth(userId: string, d: Day, habits: string[
   throw new NoteError("A nota do mês mudou enquanto gravava. Tente de novo.");
 }
 
+/** Erro do Postgres por coluna/tabela que não existe (migration não aplicada). */
+function missingSchema(err: unknown): boolean {
+  for (let e = err as { code?: string; cause?: unknown } | undefined; e; e = e.cause as typeof e) {
+    if (e.code === "42703" || e.code === "42P01") return true;
+  }
+  return false;
+}
+
 export async function getPrefs(userId: string): Promise<Prefs> {
-  const [row] = await db.select({ prefs: userSettings.prefs }).from(userSettings).where(eq(userSettings.userId, userId));
-  return cleanPrefs(row?.prefs);
+  try {
+    const [row] = await db.select({ prefs: userSettings.prefs }).from(userSettings).where(eq(userSettings.userId, userId));
+    return cleanPrefs(row?.prefs);
+  } catch (err) {
+    // Sem a migration das preferências o app ainda abre (com os padrões).
+    if (missingSchema(err)) {
+      console.error("Preferências indisponíveis: rode `npm run db:migrate` no banco.", err);
+      return cleanPrefs(null);
+    }
+    throw err;
+  }
 }
 
 export async function savePrefs(userId: string, input: unknown): Promise<Prefs> {
