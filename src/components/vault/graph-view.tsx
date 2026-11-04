@@ -1,5 +1,6 @@
 "use client";
 
+import { useGraphSettings } from "./graph-settings";
 import { inSpace, useSpace } from "./space-store";
 import {
   forceCollide,
@@ -13,7 +14,7 @@ import {
   type SimulationNodeDatum,
 } from "d3-force";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BUJO_ROOT } from "@/lib/bujo";
+import { BUJO_ROOT, LISTS_FOLDER } from "@/lib/bujo";
 import { fold } from "@/lib/fold";
 import type { NoteMeta } from "@/lib/note-paths";
 import { onNotesChanged } from "./note-cache";
@@ -23,11 +24,20 @@ import { useVault } from "./vault-context";
 // linha. "global" mostra o vault; "local" mostra a nota aberta e vizinhas.
 // Desenho em <canvas> (aguenta milhares de notas); posições por d3-force.
 
-type Node = SimulationNodeDatum & { id: string; title: string; path: string; degree: number; color: string };
+type Node = SimulationNodeDatum & {
+  id: string;
+  title: string;
+  path: string;
+  degree: number;
+  color: string;
+  /** Nota que ainda não existe ([[link]] sem nota, item de lista sem nota). */
+  ghost?: boolean;
+};
 type Link = SimulationLinkDatum<Node> & { source: Node | string; target: Node | string };
 
 const PERIODIC = [`${BUJO_ROOT}/Daily`, `${BUJO_ROOT}/Weekly`, `${BUJO_ROOT}/Monthly`];
 const isPeriodic = (n: NoteMeta) => PERIODIC.includes(n.path);
+const isList = (n: NoteMeta) => n.path === LISTS_FOLDER || n.path.startsWith(`${LISTS_FOLDER}/`);
 const HUES = ["cornflower", "fern", "apricot", "orchid", "verdigris", "rose", "honey", "lilac", "coral", "ember"];
 
 /** Cor por pasta de primeiro nível (a raiz fica neutra). */
@@ -38,23 +48,24 @@ function folderHue(path: string, order: string[]): string | null {
   return HUES[(i < 0 ? 0 : i) % HUES.length];
 }
 
-let edgeCache: { at: number; edges: [string, string][] } | null = null;
+type GraphData = { edges: [string, string][]; ghosts: [string, string, "link" | "item"][] };
+let edgeCache: { at: number; data: GraphData } | null = null;
 
-async function loadEdges(force = false): Promise<[string, string][]> {
-  if (!force && edgeCache && Date.now() - edgeCache.at < 10_000) return edgeCache.edges;
+async function loadEdges(force = false): Promise<GraphData> {
+  if (!force && edgeCache && Date.now() - edgeCache.at < 10_000) return edgeCache.data;
   const res = await fetch("/api/graph");
   if (!res.ok) throw new Error(String(res.status));
-  const { edges } = (await res.json()) as { edges: [string, string][] };
-  edgeCache = { at: Date.now(), edges };
-  return edges;
+  const data = (await res.json()) as GraphData;
+  edgeCache = { at: Date.now(), data: { edges: data.edges ?? [], ghosts: data.ghosts ?? [] } };
+  return edgeCache.data;
 }
 
 function useEdges() {
-  const [edges, setEdges] = useState<[string, string][] | null>(edgeCache?.edges ?? null);
+  const [data, setData] = useState<GraphData | null>(edgeCache?.data ?? null);
   const reload = useCallback((force = false) => {
     loadEdges(force)
-      .then(setEdges)
-      .catch(() => setEdges((e) => e ?? []));
+      .then(setData)
+      .catch(() => setData((e) => e ?? { edges: [], ghosts: [] }));
   }, []);
   useEffect(() => {
     reload();
@@ -66,10 +77,10 @@ function useEdges() {
       off();
     };
   }, [reload]);
-  return { edges, reload };
+  return { data, reload };
 }
 
-export type GraphOptions = { periodic: boolean; orphans: boolean; depth: 1 | 2; query: string };
+export type GraphOptions = { depth: 1 | 2; query: string };
 
 export function GraphView({
   mode,
@@ -82,8 +93,13 @@ export function GraphView({
   options: GraphOptions;
   onStats?: (s: { nodes: number; links: number }) => void;
 }) {
-  const { notes, goToNote } = useVault();
-  const { edges, reload } = useEdges();
+  const { notes, goToNote, createNote } = useVault();
+  const { data, reload } = useEdges();
+  const settings = useGraphSettings();
+  const settingsRef = useRef(settings);
+  useEffect(() => {
+    settingsRef.current = settings;
+  });
   const space = useSpace();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -98,9 +114,22 @@ export function GraphView({
   }, [mode, centerId, reload]);
 
   const graph = useMemo(() => {
-    if (!edges) return null;
+    if (!data) return null;
     const byId = new Map(notes.map((n) => [n.id, n]));
-    let pairs = edges.filter(([a, b]) => a !== b && byId.has(a) && byId.has(b));
+    const shown = (n: NoteMeta) => (settings.periodic || !isPeriodic(n)) && (settings.lists || !isList(n));
+    let pairs = data.edges.filter(([a, b]) => a !== b && byId.has(a) && byId.has(b));
+    // Notas que não existem: um ponto por nome, ligado a quem cita.
+    const ghostNames = new Map<string, string>();
+    if (settings.ghosts) {
+      for (const [from, name] of data.ghosts) {
+        if (!byId.has(from)) continue;
+        const id = `ghost:${fold(name)}`;
+        if (!ghostNames.has(id)) ghostNames.set(id, name);
+        pairs.push([from, id]);
+      }
+    }
+    const exists = (id: string) => byId.has(id) || ghostNames.has(id);
+    pairs = pairs.filter(([a, b]) => exists(a) && exists(b));
     let keep: Set<string>;
 
     if (mode === "local") {
@@ -116,11 +145,13 @@ export function GraphView({
         next.forEach((id) => keep.add(id));
         frontier = next;
       }
-      if (!options.periodic) for (const id of [...keep]) if (id !== centerId && isPeriodic(byId.get(id)!)) keep.delete(id);
+      for (const id of [...keep]) {
+        const n = byId.get(id);
+        if (id !== centerId && n && !shown(n)) keep.delete(id);
+      }
     } else {
-      keep = new Set(
-        notes.filter((n) => (options.periodic || !isPeriodic(n)) && inSpace(space, n.path)).map((n) => n.id),
-      );
+      keep = new Set(notes.filter((n) => shown(n) && inSpace(space, n.path)).map((n) => n.id));
+      for (const [a, b] of pairs) if (ghostNames.has(b) && keep.has(a)) keep.add(b);
     }
     pairs = pairs.filter(([a, b]) => keep.has(a) && keep.has(b));
 
@@ -129,15 +160,26 @@ export function GraphView({
       degree.set(a, (degree.get(a) ?? 0) + 1);
       degree.set(b, (degree.get(b) ?? 0) + 1);
     }
-    if (mode === "global" && !options.orphans) for (const id of [...keep]) if (!degree.get(id)) keep.delete(id);
+    if (mode === "global" && !settings.orphans) for (const id of [...keep]) if (!degree.get(id)) keep.delete(id);
 
     const tops = [...new Set(notes.map((n) => n.path.split("/")[0]).filter(Boolean))].sort();
+    const groups = settings.groups.filter((g) => g.query.trim()).map((g) => ({ q: fold(g.query.trim()), hue: g.hue }));
+    const colorOf = (path: string, title: string) => {
+      const hay = fold(path ? `${path}/${title}` : title);
+      const g = groups.find((x) => hay.includes(x.q));
+      if (g) return g.hue;
+      return settings.colorByFolder ? (folderHue(path, tops) ?? "") : "";
+    };
     const nodes: Node[] = [...keep].map((id) => {
-      const n = byId.get(id)!;
-      return { id, title: n.title, path: n.path, degree: degree.get(id) ?? 0, color: folderHue(n.path, tops) ?? "" };
+      const n = byId.get(id);
+      if (!n) return { id, title: ghostNames.get(id) ?? id, path: "", degree: degree.get(id) ?? 0, color: "", ghost: true };
+      return { id, title: n.title, path: n.path, degree: degree.get(id) ?? 0, color: colorOf(n.path, n.title) };
     });
-    return { nodes, links: pairs.map(([a, b]) => ({ source: a, target: b })) as Link[] };
-  }, [edges, notes, mode, centerId, options.periodic, options.orphans, options.depth, space]);
+    // Mesmo par em sentidos opostos vira uma linha só.
+    const uniq = new Map<string, [string, string]>();
+    for (const [a, b] of pairs) uniq.set(`${a}>${b}`, [a, b]);
+    return { nodes, links: [...uniq.values()].map(([a, b]) => ({ source: a, target: b })) as Link[] };
+  }, [data, notes, mode, centerId, options.depth, space, settings.periodic, settings.lists, settings.ghosts, settings.orphans, settings.groups, settings.colorByFolder]);
 
   useEffect(() => {
     if (graph) onStats?.({ nodes: graph.nodes.length, links: graph.links.length });
@@ -179,27 +221,43 @@ export function GraphView({
       const matches = (n: Node) => !q || fold(n.title).includes(q);
       const dim = (n: Node) => (hv && !near.has(n.id)) || (q && !matches(n));
 
+      const st = settingsRef.current;
       const muted = color("border-strong");
       const accent = color("accent");
-      ctx.lineWidth = 1 / Math.max(k, 0.6);
       for (const l of links) {
         const s = l.source as Node;
         const t = l.target as Node;
         const hot = hv && (s.id === hv.id || t.id === hv.id);
         ctx.strokeStyle = hot ? accent : muted;
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.lineWidth = (st.linkWidth * (hot ? 1.5 : 1)) / Math.max(k, 0.6);
         ctx.globalAlpha = hot ? 0.9 : hv || q ? 0.15 : 0.55;
         ctx.beginPath();
         ctx.moveTo(s.x!, s.y!);
         ctx.lineTo(t.x!, t.y!);
         ctx.stroke();
+        if (st.arrows) {
+          // Ponta da seta na borda do ponto de destino.
+          const ang = Math.atan2(t.y! - s.y!, t.x! - s.x!);
+          const r = radius(t, st.nodeSize);
+          const tipX = t.x! - Math.cos(ang) * r;
+          const tipY = t.y! - Math.sin(ang) * r;
+          const size = Math.max(3, 5 * st.linkWidth) / Math.max(k, 0.6);
+          ctx.beginPath();
+          ctx.moveTo(tipX, tipY);
+          ctx.lineTo(tipX - size * Math.cos(ang - 0.45), tipY - size * Math.sin(ang - 0.45));
+          ctx.lineTo(tipX - size * Math.cos(ang + 0.45), tipY - size * Math.sin(ang + 0.45));
+          ctx.closePath();
+          ctx.fill();
+        }
       }
 
       const neutral = color("text-soft");
       const nodes = sim.nodes();
       for (const n of nodes) {
-        const r = radius(n);
-        ctx.globalAlpha = dim(n) ? 0.18 : 1;
-        ctx.fillStyle = n.id === centerId ? accent : n.color ? color(`hue-${n.color}`) : neutral;
+        const r = radius(n, st.nodeSize);
+        ctx.globalAlpha = dim(n) ? 0.18 : n.ghost ? 0.45 : 1;
+        ctx.fillStyle = n.id === centerId ? accent : n.ghost ? muted : n.color ? color(`hue-${n.color}`) : neutral;
         ctx.beginPath();
         ctx.arc(n.x!, n.y!, r, 0, Math.PI * 2);
         ctx.fill();
@@ -218,12 +276,13 @@ export function GraphView({
       ctx.textBaseline = "top";
       const text = color("text");
       for (const n of nodes) {
-        const show = always || k > 1.3 || near.has(n.id) || n.id === centerId || (q && matches(n));
+        const zoomed = k >= st.textZoom;
+        const show = always || zoomed || near.has(n.id) || n.id === centerId || (q && matches(n));
         if (!show) continue;
-        ctx.globalAlpha = dim(n) ? 0.25 : k > 1.3 || near.has(n.id) || always || q ? 0.95 : 0.7;
+        ctx.globalAlpha = (dim(n) ? 0.25 : zoomed || near.has(n.id) || always || q ? 0.95 : 0.7) * (n.ghost ? 0.6 : 1);
         ctx.fillStyle = text;
         const label = n.title.length > 40 ? `${n.title.slice(0, 38)}…` : n.title;
-        ctx.fillText(label, n.x!, n.y! + radius(n) + 3 / k);
+        ctx.fillText(label, n.x!, n.y! + radius(n, st.nodeSize) + 3 / k);
       }
       ctx.globalAlpha = 1;
     };
@@ -231,7 +290,7 @@ export function GraphView({
 
   useEffect(() => {
     drawRef.current();
-  }, [q, centerId]);
+  }, [q, centerId, settings.arrows, settings.textZoom, settings.nodeSize, settings.linkWidth]);
 
   // Simulação.
   useEffect(() => {
@@ -244,18 +303,20 @@ export function GraphView({
       if (prev) Object.assign(n, { x: prev.x, y: prev.y, vx: prev.vx, vy: prev.vy });
     }
     const local = mode === "local";
+    const st = settingsRef.current;
+    // O grafo local é menor: espalha mais.
     const sim = forceSimulation<Node, Link>(graph.nodes)
       .force(
         "link",
         forceLink<Node, Link>(graph.links)
           .id((n) => n.id)
-          .distance(local ? 70 : 45)
-          .strength(0.6),
+          .distance(st.linkDistance * (local ? 1.5 : 1))
+          .strength(st.linkStrength),
       )
-      .force("charge", forceManyBody<Node>().strength(local ? -260 : -90).distanceMax(500))
-      .force("collide", forceCollide<Node>((n) => radius(n) + 2))
-      .force("x", forceX<Node>(0).strength(local ? 0.04 : 0.06))
-      .force("y", forceY<Node>(0).strength(local ? 0.04 : 0.06))
+      .force("charge", forceManyBody<Node>().strength(-st.repel * (local ? 2.8 : 1)).distanceMax(600))
+      .force("collide", forceCollide<Node>((n) => radius(n, st.nodeSize) + 2))
+      .force("x", forceX<Node>(0).strength(st.center * (local ? 0.7 : 1)))
+      .force("y", forceY<Node>(0).strength(st.center * (local ? 0.7 : 1)))
       .alphaDecay(0.03)
       .on("tick", () => drawRef.current());
     if (local && centerId) {
@@ -265,11 +326,12 @@ export function GraphView({
         c.fy = 0;
       }
     }
+    if (old.size) sim.alpha(0.5);
     simRef.current = sim;
     return () => {
       sim.stop();
     };
-  }, [graph, mode, centerId]);
+  }, [graph, mode, centerId, settings.center, settings.repel, settings.linkStrength, settings.linkDistance, settings.nodeSize]);
 
   // Tamanho do canvas = tamanho da área.
   useEffect(() => {
@@ -316,7 +378,7 @@ export function GraphView({
       let bestD = Infinity;
       for (const n of sim.nodes()) {
         const d = Math.hypot(n.x! - gx, n.y! - gy);
-        const r = radius(n) + 6 / view.current.k;
+        const r = radius(n, settingsRef.current.nodeSize) + 6 / view.current.k;
         if (d < r && d < bestD) {
           best = n;
           bestD = d;
@@ -396,7 +458,10 @@ export function GraphView({
           node.fy = null;
         }
         simRef.current?.alphaTarget(0);
-        if (!moved) goToNote(node.id, e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1);
+        if (!moved) {
+          if (node.ghost) createNote("", node.title);
+          else goToNote(node.id, e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1);
+        }
       }
     };
     const wheel = (e: WheelEvent) => {
@@ -423,9 +488,10 @@ export function GraphView({
       canvas.removeEventListener("pointerleave", leave);
       canvas.removeEventListener("wheel", wheel);
     };
-  }, [goToNote, mode, centerId]);
+  }, [goToNote, createNote, mode, centerId]);
 
   const empty = graph && graph.nodes.length === 0;
+  const edges = data;
 
   return (
     <div ref={wrapRef} className="relative min-h-0 flex-1 overflow-hidden">
@@ -440,4 +506,4 @@ export function GraphView({
   );
 }
 
-const radius = (n: Node) => 3.5 + Math.sqrt(n.degree) * 1.8;
+const radius = (n: Node, scale = 1) => (3.5 + Math.sqrt(n.degree) * 1.8) * scale;
