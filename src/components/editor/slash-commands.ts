@@ -114,6 +114,9 @@ const todayLink = () => {
   return `[[${refLink(dailyRef(today()))}|${pad(d.getDate())}/${pad(d.getMonth() + 1)}]]`;
 };
 
+/** Pedido de "Virar nota" (a tela da nota abre o formulário). */
+export const PROMOTE_EVENT = "noting-promote";
+
 const BLOCKS: CompletionSection = { name: "Formatação", rank: 0 };
 const BUJO: CompletionSection = { name: "Bullet Journal", rank: 1 };
 const INSERT: CompletionSection = { name: "Inserir", rank: 2 };
@@ -168,6 +171,16 @@ const COMMANDS: Cmd[] = [
   { label: "Ideia", detail: "💡", keywords: "sinalizador", section: BUJO, apply: flag("💡") },
   { label: "Lembrança", detail: "🔔", keywords: "sinalizador lembrete", section: BUJO, apply: flag("🔔") },
   { label: "Hábito", detail: "🌱", keywords: "sinalizador", section: BUJO, apply: flag("🌱") },
+  {
+    label: "Virar nota",
+    detail: "levar para o Acervo",
+    keywords: "promover extrair nota acervo ideia",
+    section: BUJO,
+    apply: (view, _c, from, to) => {
+      view.dispatch({ changes: { from, to, insert: "" }, userEvent: "input.complete" });
+      view.dom.dispatchEvent(new CustomEvent(PROMOTE_EVENT, { bubbles: true }));
+    },
+  },
   {
     label: "Registro do dia",
     detail: "humor, hábitos…",

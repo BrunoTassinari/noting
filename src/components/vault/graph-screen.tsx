@@ -1,5 +1,6 @@
 "use client";
 
+import { SpaceSwitch } from "./space-switch";
 import { useState } from "react";
 import { SearchIcon } from "@/components/icons";
 import { type GraphOptions, GraphView } from "./graph-view";
@@ -41,6 +42,7 @@ export function GraphScreen() {
             className="min-w-0 flex-1 bg-transparent text-[13px] text-text outline-none placeholder:text-muted"
           />
         </label>
+        <SpaceSwitch className="w-52" />
         <Toggle on={opts.periodic} onClick={() => setOpts({ ...opts, periodic: !opts.periodic })}>
           Diário
         </Toggle>

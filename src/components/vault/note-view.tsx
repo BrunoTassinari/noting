@@ -11,6 +11,7 @@ import {
   LinkIcon,
   MenuIcon,
   MigrateIcon,
+  NoteIcon,
   MoreIcon,
   MoveIcon,
   PencilIcon,
@@ -34,6 +35,8 @@ import { Outline } from "./outline";
 import { Sheet } from "./sheet";
 import { Menu } from "./menu";
 import { cancelTasks, MigrateTaskSheet } from "./migrate-task";
+import { PROMOTE_EVENT } from "@/components/editor/slash-commands";
+import { type PromoteRequest, PromoteSheet, promoteRequest } from "./promote-note";
 import { loadNoteBody, onNotesChanged, updateCachedBody } from "./note-cache";
 import { periodOf } from "@/lib/bujo";
 import { fillTemplate, isTemplate, listTemplates } from "@/lib/templates";
@@ -73,6 +76,22 @@ export function NoteView({
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [migrateOpen, setMigrateOpen] = useState(false);
+  const [promote, setPromote] = useState<PromoteRequest | null>(null);
+  const editorBox = useRef<HTMLDivElement>(null);
+  const openPromote = useCallback(() => {
+    const api = editorApi.current;
+    if (!api) return;
+    const req = promoteRequest(api);
+    if (typeof req === "string") showError(req);
+    else setPromote(req);
+  }, [showError]);
+  // "/Virar nota" no editor avisa por um evento no DOM.
+  useEffect(() => {
+    const el = editorBox.current;
+    if (!el) return;
+    el.addEventListener(PROMOTE_EVENT, openPromote);
+    return () => el.removeEventListener(PROMOTE_EVENT, openPromote);
+  }, [openPromote]);
   const backlinkCount = note.backlinks?.length ?? 0;
 
   const periodicItems = usePeriodicMenuItems(note);
@@ -85,6 +104,7 @@ export function NoteView({
       onSelect: () => setSheetOpen(true),
     },
     { label: "Migrar tarefa…", icon: <MigrateIcon size={15} />, onSelect: () => setMigrateOpen(true) },
+    { label: "Virar nota…", icon: <NoteIcon size={15} />, onSelect: openPromote },
     {
       label: "Cancelar tarefa",
       icon: <CancelTaskIcon size={15} />,
@@ -159,7 +179,7 @@ export function NoteView({
 
       <div className="flex min-h-0 flex-1">
         {/* Editor */}
-        <div className="min-w-0 flex-1 overflow-y-auto bg-surface px-5 pb-16 pt-5 md:px-10 md:pt-10">
+        <div ref={editorBox} className="min-w-0 flex-1 overflow-y-auto bg-surface px-5 pb-16 pt-5 md:px-10 md:pt-10">
           <div className="w-full">
             <TitleInput
               key={note.title}
@@ -202,6 +222,8 @@ export function NoteView({
           />
         </div>
       </Sheet>
+
+      <PromoteSheet request={promote} onClose={() => setPromote(null)} noteId={note.id} editor={editorApi} />
 
       <MigrateTaskSheet
         open={migrateOpen}

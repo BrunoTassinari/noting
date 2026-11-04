@@ -1,5 +1,7 @@
 "use client";
 
+import { filterSpace, useSpace } from "./space-store";
+import { SpaceSwitch } from "./space-switch";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { renameNoteAction } from "@/app/(vault)/actions";
 import {
@@ -27,7 +29,9 @@ export const panelIconButton =
 
 /** Painel "Arquivos": a árvore de pastas e notas. */
 export function FilesPanel() {
-  const { notes, activeNote, currentFolder, creating, createNote, openNewFolder } = useVault();
+  const { notes: allNotes, activeNote, currentFolder, creating, createNote, openNewFolder } = useVault();
+  const space = useSpace();
+  const notes = useMemo(() => filterSpace(space, allNotes), [space, allNotes]);
 
   // Abre as pastas da nota ativa.
   useEffect(() => {
@@ -63,10 +67,11 @@ export function FilesPanel() {
           <CollapseIcon size={15} />
         </button>
       </div>
+      <SpaceSwitch className="mx-2.5 mb-1.5 shrink-0" />
       <nav aria-label="Notas" className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
         {notes.length === 0 ? (
           <p className="px-3 py-6 text-center text-[13px] text-muted">
-            Nenhuma nota ainda. Crie a primeira com o lápis acima.
+            {allNotes.length === 0 ? "Nenhuma nota ainda. Crie a primeira com o lápis acima." : "Nenhuma nota neste espaço."}
           </p>
         ) : (
           <Tree notes={notes} activeId={activeNote?.id} />

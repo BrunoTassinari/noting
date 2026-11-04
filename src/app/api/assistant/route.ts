@@ -6,7 +6,8 @@ import { auth } from "@/lib/auth";
 import { WEEKDAYS } from "@/lib/bujo";
 import { type AgentEvent, apiErrorMessage, runAgent } from "@/server/ai/agent";
 import { createChat, getChat, saveChatMessages } from "@/server/ai/chats";
-import { getAiConfig } from "@/server/ai/config";
+import { getAiConfig, getAllowPrivate } from "@/server/ai/config";
+import { isPrivatePath } from "@/lib/promote";
 import { getNote } from "@/server/notes";
 
 // POST /api/assistant: manda uma mensagem ao assistente e devolve a resposta
@@ -94,9 +95,10 @@ export async function POST(request: Request) {
     const b = attachmentBlock(f);
     if (b) content.push(b);
   }
+  const allowPrivate = await getAllowPrivate(userId);
   if (body?.noteId) {
     const note = await getNote(userId, body.noteId);
-    if (note) {
+    if (note && (allowPrivate || !isPrivatePath(note.path))) {
       const where = note.path ? `${note.path}/${note.title}` : note.title;
       content.push({
         type: "text",
@@ -131,6 +133,7 @@ export async function POST(request: Request) {
           userId,
           messages,
           signal: request.signal,
+          allowPrivate,
           emit: send,
           onStep: (m) => saveChatMessages(userId, id, m),
         });

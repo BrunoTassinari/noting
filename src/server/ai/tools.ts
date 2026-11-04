@@ -6,6 +6,7 @@ import { notes } from "@/db/schema";
 import { addDays, dailyRef, type Day, isoDay, parseDay, weeklyRef } from "@/lib/bujo";
 import { sha256Hex } from "@/lib/hash";
 import { resolveWikilink, type NoteMeta } from "@/lib/note-paths";
+import { isPrivatePath } from "@/lib/promote";
 import { createNote, getNote, listNotes, NoteError, updateNoteBody } from "../notes";
 import { searchNotes } from "../search";
 
@@ -164,11 +165,26 @@ async function save(userId: string, note: NoteMeta, before: string, next: string
   return null;
 }
 
-export async function runNoteTool(userId: string, name: string, input: Record<string, unknown>): Promise<ToolOutcome> {
+const PRIVATE_MSG =
+  "Essa nota está na pasta Pessoal, que é privada: o Claude não tem acesso (a pessoa pode liberar em Configurações › Conector Claude).";
+
+export async function runNoteTool(
+  userId: string,
+  name: string,
+  input: Record<string, unknown>,
+  opts: { allowPrivate?: boolean } = {},
+): Promise<ToolOutcome> {
+  const visible = (path: string) => opts.allowPrivate || !isPrivatePath(path);
+  /** Acha a nota; privada (sem permissão) = erro explicando. */
+  const find = async (ref: string) => {
+    const hit = findNote(await listNotes(userId), ref);
+    if (!isOutcome(hit) && !visible(hit.path)) return fail(PRIVATE_MSG);
+    return hit;
+  };
   try {
     switch (name) {
       case "search_notes": {
-        const results = await searchNotes(userId, str(input.query), 20);
+        const results = (await searchNotes(userId, str(input.query), 40)).filter((r) => visible(r.path)).slice(0, 20);
         if (results.length === 0) return { content: "Nenhuma nota encontrada." };
         return {
           content: results
@@ -181,7 +197,7 @@ export async function runNoteTool(userId: string, name: string, input: Record<st
         const folder = str(input.folder).trim().replace(/^\/+|\/+$/g, "").toLowerCase();
         const since = input.changed_since ? parseDay(str(input.changed_since)) : null;
         let list = (await listNotes(userId)).filter(
-          (n) => !folder || n.path.toLowerCase() === folder || n.path.toLowerCase().startsWith(`${folder}/`),
+          (n) => visible(n.path) && (!folder || n.path.toLowerCase() === folder || n.path.toLowerCase().startsWith(`${folder}/`)),
         );
         if (since) list = list.filter((n) => new Date(n.updatedAt) >= since);
         list.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
@@ -195,7 +211,7 @@ export async function runNoteTool(userId: string, name: string, input: Record<st
       }
 
       case "read_note": {
-        const hit = findNote(await listNotes(userId), str(input.note));
+        const hit = await find(str(input.note));
         if (isOutcome(hit)) return hit;
         const note = await getNote(userId, hit.id);
         if (!note) return fail("Nota não encontrada.");
@@ -234,6 +250,7 @@ export async function runNoteTool(userId: string, name: string, input: Record<st
 
       case "create_note": {
         const content = str(input.content);
+        if (!visible(str(input.folder))) return fail(PRIVATE_MSG);
         const meta = await createNote(userId, { path: str(input.folder), title: str(input.title) });
         if (content) await updateNoteBody(userId, meta.id, content);
         return {
@@ -245,7 +262,7 @@ export async function runNoteTool(userId: string, name: string, input: Record<st
       }
 
       case "append_to_note": {
-        const hit = findNote(await listNotes(userId), str(input.note));
+        const hit = await find(str(input.note));
         if (isOutcome(hit)) return hit;
         const note = await getNote(userId, hit.id);
         if (!note) return fail("Nota não encontrada.");
@@ -258,7 +275,7 @@ export async function runNoteTool(userId: string, name: string, input: Record<st
       }
 
       case "edit_note": {
-        const hit = findNote(await listNotes(userId), str(input.note));
+        const hit = await find(str(input.note));
         if (isOutcome(hit)) return hit;
         const note = await getNote(userId, hit.id);
         if (!note) return fail("Nota não encontrada.");

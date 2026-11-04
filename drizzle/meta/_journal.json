@@ -57,6 +57,13 @@
       "when": 1793747582692,
       "tag": "0007_mcp_connector",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793754249759,
+      "tag": "0008_ai_private",
+      "breakpoints": true
     }
   ]
 }

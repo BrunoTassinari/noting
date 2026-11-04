@@ -6,6 +6,7 @@ import {
   createConnectorTokenAction,
   loadAiSettingsAction,
   revokeConnectorTokenAction,
+  setAllowPrivateAction,
   saveAiSettingsAction,
 } from "@/app/(vault)/assistant-actions";
 import { saveHabitsAction } from "@/app/(vault)/settings-actions";
@@ -87,6 +88,7 @@ function SettingsTabs({
 /** Conector MCP: o app do Claude (com a assinatura) lê e edita as notas. */
 function ConnectorForm({ onClose }: { onClose: () => void }) {
   const [active, setActive] = useState<boolean | null>(null);
+  const [allowPrivate, setAllowPrivate] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
@@ -95,7 +97,10 @@ function ConnectorForm({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     void connectorStatusAction()
       .catch(() => null)
-      .then((r) => setActive(r?.ok ? r.active : false));
+      .then((r) => {
+        setActive(r?.ok ? r.active : false);
+        if (r?.ok) setAllowPrivate(r.allowPrivate);
+      });
   }, []);
 
   const create = async () => {
@@ -178,6 +183,25 @@ function ConnectorForm({ onClose }: { onClose: () => void }) {
       ) : (
         <p className="text-[13px] text-text-soft">Gere um token para ligar o conector.</p>
       )}
+
+      <label className="flex min-h-11 cursor-pointer items-start gap-2 text-[13px] text-text-soft md:min-h-0">
+        <input
+          type="checkbox"
+          checked={allowPrivate}
+          onChange={(e) => {
+            const v = e.target.checked;
+            setAllowPrivate(v);
+            void setAllowPrivateAction(v);
+          }}
+          className="mt-0.5 size-4 accent-[var(--color-accent)]"
+        />
+        <span>
+          Deixar o Claude ler a pasta <b>Pessoal</b>
+          <span className="block text-xs text-muted">
+            Desligado: terapia, diários e tudo em Pessoal/ ficam fora do alcance do conector e do assistente.
+          </span>
+        </span>
+      </label>
 
       <div className="flex flex-wrap justify-end gap-2">
         {active && (

@@ -203,6 +203,8 @@ export const userSettings = pgTable("user_settings", {
   aiModel: text("ai_model"),
   /** SHA-256 do token do conector MCP (o app do Claude lê as notas com ele). */
   mcpTokenHash: text("mcp_token_hash").unique(),
+  /** O Claude (conector e assistente) pode ler a pasta Pessoal? */
+  aiAllowPrivate: boolean("ai_allow_private").notNull().default(false),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()

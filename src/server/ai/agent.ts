@@ -60,6 +60,8 @@ export async function runAgent(opts: {
   emit: (e: AgentEvent) => void;
   /** Chamado a cada rodada completa (resposta + resultados), para salvar. */
   onStep: (messages: Msg[]) => Promise<void>;
+  /** Pode ler a pasta Pessoal. */
+  allowPrivate?: boolean;
 }) {
   const { model, userId, signal, emit, onStep } = opts;
   const client = new Anthropic({ apiKey: opts.apiKey, maxRetries: 2 });
@@ -120,7 +122,7 @@ export async function runAgent(opts: {
     for (const use of uses) {
       const input = (use.input && typeof use.input === "object" ? use.input : {}) as Record<string, unknown>;
       emit({ t: "tool_input", id: use.id, input });
-      const out = await runNoteTool(userId, use.name, input);
+      const out = await runNoteTool(userId, use.name, input, { allowPrivate: opts.allowPrivate });
       emit({ t: "tool_done", id: use.id, error: out.isError, changed: out.changed, created: out.created });
       results.push({ type: "tool_result", tool_use_id: use.id, content: out.content, is_error: out.isError || undefined });
     }

@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { z } from "zod";
 import { WEEKDAYS } from "@/lib/bujo";
+import { getAllowPrivate } from "@/server/ai/config";
 import { userForConnectorToken } from "@/server/ai/connector";
 import { runNoteTool } from "@/server/ai/tools";
 
@@ -22,10 +23,10 @@ const note = z.string().describe('Título ("Dom Casmurro") ou caminho com títul
 const READ = { readOnlyHint: true, openWorldHint: false } as const;
 const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
 
-function buildServer(userId: string) {
+function buildServer(userId: string, allowPrivate: boolean) {
   const server = new McpServer({ name: "noting", version: "1.0.0" }, { instructions: INSTRUCTIONS });
   const call = (name: string) => async (input: Record<string, unknown>) => {
-    const out = await runNoteTool(userId, name, input);
+    const out = await runNoteTool(userId, name, input, { allowPrivate });
     return { content: [{ type: "text" as const, text: out.content }], isError: out.isError };
   };
 
@@ -136,7 +137,7 @@ async function handle(request: Request): Promise<Response> {
       { status: 401 },
     );
   }
-  const server = buildServer(userId);
+  const server = buildServer(userId, await getAllowPrivate(userId));
   const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
   await server.connect(transport);
   try {

@@ -1,0 +1,1 @@
+ALTER TABLE "user_settings" ADD COLUMN "ai_allow_private" boolean DEFAULT false NOT NULL;

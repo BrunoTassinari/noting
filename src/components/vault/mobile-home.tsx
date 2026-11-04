@@ -1,5 +1,7 @@
 "use client";
 
+import { filterSpace, useSpace } from "./space-store";
+import { SpaceSwitch } from "./space-switch";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { signOut } from "@/app/login/actions";
@@ -175,9 +177,7 @@ export function MobileHome() {
             ))}
           </ul>
         ) : (
-          <div className="-mx-2">
-            <Tree notes={notes} />
-          </div>
+          <FoldersTab notes={notes} />
         )}
       </div>
 
@@ -263,5 +263,19 @@ function RecentRow({ note, excerpt }: { note: NoteMeta; excerpt?: string }) {
         <MoreIcon size={20} />
       </button>
     </li>
+  );
+}
+
+/** Aba "Pastas": árvore do espaço escolhido (BuJo, Acervo ou Tudo). */
+function FoldersTab({ notes }: { notes: NoteMeta[] }) {
+  const space = useSpace();
+  const shown = useMemo(() => filterSpace(space, notes), [space, notes]);
+  return (
+    <>
+      <SpaceSwitch className="mb-2" />
+      <div className="-mx-2">
+        {shown.length ? <Tree notes={shown} /> : <p className="px-3 py-6 text-center text-[13px] text-muted">Nenhuma nota neste espaço.</p>}
+      </div>
+    </>
   );
 }

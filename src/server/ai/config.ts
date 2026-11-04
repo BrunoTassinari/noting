@@ -88,3 +88,17 @@ export async function saveAiSettings(userId: string, input: { apiKey?: string; m
     .values({ userId, ...set })
     .onConflictDoUpdate({ target: userSettings.userId, set });
 }
+
+/** O Claude pode ler a pasta Pessoal? (padrão: não) */
+export async function getAllowPrivate(userId: string): Promise<boolean> {
+  const [r] = await db
+    .select({ v: userSettings.aiAllowPrivate })
+    .from(userSettings)
+    .where(eq(userSettings.userId, userId));
+  return r?.v ?? false;
+}
+
+export async function setAllowPrivate(userId: string, allow: boolean): Promise<void> {
+  const set = { aiAllowPrivate: allow };
+  await db.insert(userSettings).values({ userId, ...set }).onConflictDoUpdate({ target: userSettings.userId, set });
+}

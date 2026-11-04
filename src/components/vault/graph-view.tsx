@@ -1,5 +1,6 @@
 "use client";
 
+import { inSpace, useSpace } from "./space-store";
 import {
   forceCollide,
   forceLink,
@@ -83,6 +84,7 @@ export function GraphView({
 }) {
   const { notes, goToNote } = useVault();
   const { edges, reload } = useEdges();
+  const space = useSpace();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const simRef = useRef<Simulation<Node, Link> | null>(null);
@@ -116,7 +118,9 @@ export function GraphView({
       }
       if (!options.periodic) for (const id of [...keep]) if (id !== centerId && isPeriodic(byId.get(id)!)) keep.delete(id);
     } else {
-      keep = new Set(notes.filter((n) => options.periodic || !isPeriodic(n)).map((n) => n.id));
+      keep = new Set(
+        notes.filter((n) => (options.periodic || !isPeriodic(n)) && inSpace(space, n.path)).map((n) => n.id),
+      );
     }
     pairs = pairs.filter(([a, b]) => keep.has(a) && keep.has(b));
 
@@ -133,7 +137,7 @@ export function GraphView({
       return { id, title: n.title, path: n.path, degree: degree.get(id) ?? 0, color: folderHue(n.path, tops) ?? "" };
     });
     return { nodes, links: pairs.map(([a, b]) => ({ source: a, target: b })) as Link[] };
-  }, [edges, notes, mode, centerId, options.periodic, options.orphans, options.depth]);
+  }, [edges, notes, mode, centerId, options.periodic, options.orphans, options.depth, space]);
 
   useEffect(() => {
     if (graph) onStats?.({ nodes: graph.nodes.length, links: graph.links.length });

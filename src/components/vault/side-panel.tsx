@@ -1,5 +1,6 @@
 "use client";
 
+import { inSpace, useSpace } from "./space-store";
 import { EmojiIcon, EmojiText } from "@/components/emoji-text";
 import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
 import { loadSignalsAction } from "@/app/(vault)/lists-actions";
@@ -287,7 +288,8 @@ function SearchPanel() {
     };
   }, [trimmed]);
 
-  const items = trimmed && result?.q === trimmed ? result.items : null;
+  const space = useSpace();
+  const items = trimmed && result?.q === trimmed ? result.items.filter((r) => inSpace(space, r.path)) : null;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
