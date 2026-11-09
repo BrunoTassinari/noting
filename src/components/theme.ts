@@ -21,6 +21,19 @@ const COLORS: Record<Exclude<ThemePref, "system">, string> = {
 };
 
 export type ReadingFont = "firelight" | "legible" | "system";
+
+/** Cor de destaque (botões, seleção, link ativo). Cada uma tem um tom para
+ * temas escuros e outro para claros (contraste ≥ 5:1 nos dois). */
+export const ACCENTS = [
+  { key: "rose", label: "Rosa", dark: "#f06b8a", light: "#b83f5f" },
+  { key: "blue", label: "Azul", dark: "#7fa8f5", light: "#2f5fb8" },
+  { key: "green", label: "Verde", dark: "#8cc26e", light: "#3f6e28" },
+  { key: "amber", label: "Âmbar", dark: "#e9b26a", light: "#8a5a1c" },
+  { key: "lilac", label: "Lilás", dark: "#b9a3f0", light: "#6a4fb0" },
+  { key: "teal", label: "Turquesa", dark: "#5ccbbd", light: "#1b6f63" },
+  { key: "graphite", label: "Grafite", dark: "#c9c4be", light: "#4a4540" },
+] as const;
+export type Accent = (typeof ACCENTS)[number]["key"];
 export type Reading = {
   font: ReadingFont;
   /** Tamanho do texto das notas, em px. */
@@ -31,12 +44,13 @@ export type Reading = {
   spacing: number;
   /** Peso do texto (400 normal, 500 médio, 600 forte). */
   weight: 400 | 500 | 600;
+  accent: Accent;
 };
 
-export const DEFAULT_READING: Reading = { font: "firelight", size: 16, line: 1.68, spacing: 0, weight: 400 };
+export const DEFAULT_READING: Reading = { font: "firelight", size: 16, line: 1.68, spacing: 0, weight: 400, accent: "rose" };
 
 /** Ponto de partida para astigmatismo: letra mais aberta, maior e mais espaçada. */
-export const ASTIGMATISM_READING: Reading = { font: "legible", size: 18, line: 1.85, spacing: 0.02, weight: 500 };
+export const ASTIGMATISM_READING: Omit<Reading, "accent"> = { font: "legible", size: 18, line: 1.85, spacing: 0.02, weight: 500 };
 
 const FONT_VAR: Record<ReadingFont, string> = {
   firelight: "var(--font-hanken-grotesk)",
@@ -45,7 +59,7 @@ const FONT_VAR: Record<ReadingFont, string> = {
 };
 
 /** Roda no <head>, antes de pintar. Mantém igual a apply()/applyReading() abaixo. */
-export const THEME_SCRIPT = `(function(){try{var d=document.documentElement;var m=window.matchMedia("(prefers-color-scheme: light)");var C=${JSON.stringify(COLORS)};var F=${JSON.stringify(FONT_VAR)};function a(){var q=localStorage.getItem("${KEY}")||"system";var t=q==="system"?(m.matches?"light":"dark"):q;if(!C[t])t="dark";d.dataset.theme=t;d.style.colorScheme=(t==="light"||t==="sepia")?"light":"dark";var c=document.querySelector('meta[name="theme-color"]');if(c)c.setAttribute("content",C[t]);}function r(){var s={};try{s=JSON.parse(localStorage.getItem("${READING_KEY}")||"{}")||{};}catch(e){}var st=d.style;st.setProperty("--app-font",(F[s.font]||F.firelight));st.setProperty("--read-size",(s.size||16)+"px");st.setProperty("--read-line",String(s.line||1.68));st.setProperty("--read-spacing",(s.spacing||0)+"em");st.setProperty("--read-weight",String(s.weight||400));}a();r();m.addEventListener("change",a);window.__notingApplyTheme=a;window.__notingApplyReading=r;}catch(e){}})();`;
+export const THEME_SCRIPT = `(function(){try{var d=document.documentElement;var m=window.matchMedia("(prefers-color-scheme: light)");var C=${JSON.stringify(COLORS)};var F=${JSON.stringify(FONT_VAR)};function a(){var q=localStorage.getItem("${KEY}")||"system";var t=q==="system"?(m.matches?"light":"dark"):q;if(!C[t])t="dark";d.dataset.theme=t;d.style.colorScheme=(t==="light"||t==="sepia")?"light":"dark";var c=document.querySelector('meta[name="theme-color"]');if(c)c.setAttribute("content",C[t]);}function r(){var s={};try{s=JSON.parse(localStorage.getItem("${READING_KEY}")||"{}")||{};}catch(e){}var st=d.style;st.setProperty("--app-font",(F[s.font]||F.firelight));st.setProperty("--read-size",(s.size||16)+"px");st.setProperty("--read-line",String(s.line||1.68));st.setProperty("--read-spacing",(s.spacing||0)+"em");st.setProperty("--read-weight",String(s.weight||400));d.dataset.accent=s.accent||"rose";}a();r();m.addEventListener("change",a);window.__notingApplyTheme=a;window.__notingApplyReading=r;}catch(e){}})();`;
 
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach((l) => l());

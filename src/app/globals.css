@@ -286,3 +286,25 @@ body {
 .ai-md th { color: var(--color-text-strong); font-weight: 600; }
 .ai-md hr { border: 0; border-top: 1px solid var(--color-border); }
 .ai-md input[type="checkbox"] { margin-right: 0.4em; vertical-align: middle; }
+
+
+/* Cor de destaque escolhida em Configurações › Leitura (data-accent). Fora
+   de @layer de propósito: vence os tokens dos temas. Rosa = cores do tema. */
+:root[data-accent="blue"] { --color-accent: #7fa8f5; }
+:root[data-accent="blue"]:is([data-theme="light"], [data-theme="sepia"]) { --color-accent: #2f5fb8; }
+:root[data-accent="green"] { --color-accent: #8cc26e; }
+:root[data-accent="green"]:is([data-theme="light"], [data-theme="sepia"]) { --color-accent: #3f6e28; }
+:root[data-accent="amber"] { --color-accent: #e9b26a; }
+:root[data-accent="amber"]:is([data-theme="light"], [data-theme="sepia"]) { --color-accent: #8a5a1c; }
+:root[data-accent="lilac"] { --color-accent: #b9a3f0; }
+:root[data-accent="lilac"]:is([data-theme="light"], [data-theme="sepia"]) { --color-accent: #6a4fb0; }
+:root[data-accent="teal"] { --color-accent: #5ccbbd; }
+:root[data-accent="teal"]:is([data-theme="light"], [data-theme="sepia"]) { --color-accent: #1b6f63; }
+:root[data-accent="graphite"] { --color-accent: #c9c4be; }
+:root[data-accent="graphite"]:is([data-theme="light"], [data-theme="sepia"]) { --color-accent: #4a4540; }
+:root[data-accent]:not([data-accent="rose"]) {
+  --color-active: color-mix(in srgb, var(--color-accent) 18%, var(--color-surface));
+  --color-today: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+  --color-quote-bg: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
+  --color-quote-bar: color-mix(in srgb, var(--color-accent) 65%, var(--color-surface));
+}

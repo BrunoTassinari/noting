@@ -11,6 +11,7 @@ import {
 } from "@/app/(vault)/assistant-actions";
 import { saveHabitsAction, savePrefsAction } from "@/app/(vault)/settings-actions";
 import {
+  ACCENTS,
   ASTIGMATISM_READING,
   DEFAULT_READING,
   type Reading,
@@ -253,7 +254,7 @@ function RangeRow({
 }
 
 const same = (a: Reading, b: Reading) =>
-  a.font === b.font && a.size === b.size && a.line === b.line && a.spacing === b.spacing && a.weight === b.weight;
+  a.font === b.font && a.size === b.size && a.line === b.line && a.spacing === b.spacing && a.weight === b.weight && a.accent === b.accent;
 
 /** Tema e leitura (fonte, tamanho, espaços, peso). Vale neste aparelho; muda na hora. */
 function ReadingForm({ onClose }: { onClose: () => void }) {
@@ -311,6 +312,32 @@ function ReadingForm({ onClose }: { onClose: () => void }) {
               <span className="text-[11px] leading-snug text-muted">{t.hint}</span>
             </button>
           ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <h3 className={section}>Cor de destaque</h3>
+        <div className="flex flex-wrap gap-2">
+          {ACCENTS.map((a) => {
+            const lightTheme = theme === "light" || theme === "sepia" || (theme === "system" && document.documentElement.dataset.theme === "light");
+            const on = r.accent === a.key;
+            return (
+              <button
+                key={a.key}
+                type="button"
+                aria-pressed={on}
+                title={a.label}
+                onClick={() => setReading({ accent: a.key })}
+                className={`flex min-h-11 flex-col items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] md:min-h-0 ${on ? "bg-active text-text-strong" : "text-muted hover:bg-card"}`}
+              >
+                <span
+                  className={`size-6 rounded-full ${on ? "ring-2 ring-text ring-offset-2 ring-offset-panel" : ""}`}
+                  style={{ background: lightTheme ? a.light : a.dark }}
+                />
+                {a.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
