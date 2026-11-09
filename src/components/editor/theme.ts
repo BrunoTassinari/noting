@@ -26,10 +26,11 @@ export const editorTheme = EditorView.theme(
   {
     "&": { backgroundColor: "transparent", color: c.text },
     "&.cm-focused": { outline: "none" },
-    ".cm-scroller": { fontFamily: "var(--font-sans)", lineHeight: "1.68", overflow: "visible" },
+    // Tamanho e entrelinha vêm de Configurações › Leitura.
+    ".cm-scroller": { fontFamily: "var(--font-sans)", lineHeight: "var(--read-line, 1.68)", overflow: "visible" },
     ".cm-content": {
       padding: "0 0 40vh",
-      fontSize: "16px",
+      fontSize: "var(--read-size, 16px)",
       caretColor: c.accent,
       minHeight: "50vh",
     },

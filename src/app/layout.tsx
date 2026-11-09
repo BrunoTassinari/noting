@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Hanken_Grotesk, Space_Mono } from "next/font/google";
+import { Atkinson_Hyperlegible_Next, Hanken_Grotesk, Space_Mono } from "next/font/google";
 import { ServiceWorkerRegistration } from "@/components/service-worker";
 import { THEME_SCRIPT } from "@/components/theme";
 import "./globals.css";
@@ -9,6 +9,14 @@ import "./globals.css";
 const hankenGrotesk = Hanken_Grotesk({
   variable: "--font-hanken-grotesk",
   subsets: ["latin", "latin-ext"],
+});
+
+// Opção de leitura (Configurações › Leitura): fonte feita para baixa visão,
+// com letras bem diferentes entre si (I/l/1, O/0). Só carrega se escolhida.
+const atkinson = Atkinson_Hyperlegible_Next({
+  variable: "--font-atkinson",
+  subsets: ["latin", "latin-ext"],
+  preload: false,
 });
 
 const spaceMono = Space_Mono({
@@ -40,7 +48,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="pt-BR"
-      className={`${hankenGrotesk.variable} ${spaceMono.variable} h-full antialiased`}
+      className={`${hankenGrotesk.variable} ${atkinson.variable} ${spaceMono.variable} h-full antialiased`}
       // data-theme é definido pelo script abaixo antes da hidratação.
       suppressHydrationWarning
     >

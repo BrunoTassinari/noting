@@ -10,7 +10,16 @@ import {
   saveAiSettingsAction,
 } from "@/app/(vault)/assistant-actions";
 import { saveHabitsAction, savePrefsAction } from "@/app/(vault)/settings-actions";
-import { setThemePref, useThemePref } from "@/components/theme";
+import {
+  ASTIGMATISM_READING,
+  DEFAULT_READING,
+  type Reading,
+  type ThemePref,
+  setReading,
+  setThemePref,
+  useReading,
+  useThemePref,
+} from "@/components/theme";
 import type { Prefs } from "@/lib/prefs";
 import { useVault } from "./vault-context";
 import { ArrowLeftIcon, ArrowRightIcon, CloseIcon, PlusIcon } from "@/components/icons";
@@ -54,13 +63,14 @@ function SettingsTabs({
   onClose: () => void;
   onSaved: (monthNoteId: string | null) => void;
 }) {
-  const [tab, setTab] = useState<"general" | "habits" | "claude" | "ai">("general");
+  const [tab, setTab] = useState<"general" | "reading" | "habits" | "claude" | "ai">("general");
   return (
     <>
       <div role="tablist" aria-label="Seções" className="mb-4 flex gap-1 rounded-lg bg-rail p-1">
         {(
           [
             ["general", "Geral"],
+            ["reading", "Leitura"],
             ["habits", "Hábitos"],
             ["claude", "Claude"],
             ["ai", "API"],
@@ -80,6 +90,8 @@ function SettingsTabs({
       </div>
       {tab === "general" ? (
         <GeneralForm onClose={onClose} />
+      ) : tab === "reading" ? (
+        <ReadingForm onClose={onClose} />
       ) : tab === "habits" ? (
         <HabitsForm initial={habits} onCancel={onClose} onSaved={onSaved} />
       ) : tab === "claude" ? (
@@ -106,7 +118,6 @@ function Switch({ checked, onChange, label, hint }: { checked: boolean; onChange
 /** Preferências gerais: confirmações, onde nascem notas, tema. Salva na hora. */
 function GeneralForm({ onClose }: { onClose: () => void }) {
   const { prefs, setPrefs, showError } = useVault();
-  const theme = useThemePref();
   const update = (patch: Partial<Prefs>) => {
     const next = { ...prefs, ...patch };
     setPrefs(next);
@@ -160,34 +171,222 @@ function GeneralForm({ onClose }: { onClose: () => void }) {
         />
       </div>
 
-      <div className="flex flex-col gap-2">
-        <h3 className={section}>Aparência</h3>
-        <div className="flex gap-1 rounded-lg bg-rail p-1">
-          {(
-            [
-              ["system", "Sistema"],
-              ["light", "Claro"],
-              ["dark", "Escuro"],
-            ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              aria-pressed={theme === key}
-              onClick={() => setThemePref(key)}
-              className={`h-9 flex-1 rounded-md text-[13px] md:h-8 ${theme === key ? "bg-active text-text-strong" : "text-muted"}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <p className="text-xs text-muted">Tema, fonte e tamanho do texto ficam na aba Leitura.</p>
 
       <div className="flex justify-end">
         <button type="button" onClick={onClose} className={`${buttonBase} text-text-soft hover:bg-card`}>
           Fechar
         </button>
       </div>
+    </div>
+  );
+}
+
+const THEME_CARDS: { key: ThemePref; label: string; hint: string; bg: string; fg: string }[] = [
+  { key: "system", label: "Do sistema", hint: "Claro ou escuro, como o aparelho", bg: "linear-gradient(135deg,#fef8f6 50%,#1c1c1c 50%)", fg: "#888" },
+  { key: "light", label: "Claro", hint: "Fundo rosado claro", bg: "#f4eeec", fg: "#473e36" },
+  { key: "sepia", label: "Sépia", hint: "Claro e quente, sem branco puro", bg: "#f7f0e1", fg: "#3d3428" },
+  { key: "dim", label: "Escuro suave", hint: "Grafite, menos brilho no texto", bg: "#2a2b2f", fg: "#d2cec8" },
+  { key: "dark", label: "Escuro", hint: "O mais escuro (mais contraste)", bg: "#1c1c1c", fg: "#dedad6" },
+];
+
+function Segmented<T extends string | number>({
+  value,
+  options,
+  onChange,
+}: {
+  value: T;
+  options: [T, string][];
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="flex gap-1 rounded-lg bg-rail p-1">
+      {options.map(([key, label]) => (
+        <button
+          key={String(key)}
+          type="button"
+          aria-pressed={value === key}
+          onClick={() => onChange(key)}
+          className={`h-9 min-w-0 flex-1 rounded-md px-1 text-[13px] md:h-8 ${value === key ? "bg-active text-text-strong" : "text-muted"}`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function RangeRow({
+  label,
+  value,
+  min,
+  max,
+  step,
+  format,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  format: (v: number) => string;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <label className="flex flex-col gap-1 text-[13px] text-text">
+      <span className="flex justify-between">
+        {label}
+        <span className="tabular-nums text-muted">{format(value)}</span>
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="h-6 w-full accent-[var(--color-accent)]"
+      />
+    </label>
+  );
+}
+
+const same = (a: Reading, b: Reading) =>
+  a.font === b.font && a.size === b.size && a.line === b.line && a.spacing === b.spacing && a.weight === b.weight;
+
+/** Tema e leitura (fonte, tamanho, espaços, peso). Vale neste aparelho; muda na hora. */
+function ReadingForm({ onClose }: { onClose: () => void }) {
+  const theme = useThemePref();
+  const r = useReading();
+  const section = "text-xs font-semibold uppercase tracking-[0.04em] text-muted";
+  return (
+    <div className="flex max-h-[68vh] flex-col gap-4 overflow-y-auto pr-1">
+      <div className="rounded-lg border border-border bg-rail p-3">
+        <p className="mb-2 text-[13px] font-medium text-text-strong">Para astigmatismo</p>
+        <p className="mb-2.5 text-xs leading-normal text-muted">
+          Texto claro sobre fundo muito escuro tende a “espalhar”. Comece por um destes e ajuste abaixo.
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              setThemePref("sepia");
+              setReading(ASTIGMATISM_READING);
+            }}
+            className={`${buttonBase} border border-border text-text hover:bg-card`}
+          >
+            Claro confortável (sépia)
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setThemePref("dim");
+              setReading(ASTIGMATISM_READING);
+            }}
+            className={`${buttonBase} border border-border text-text hover:bg-card`}
+          >
+            Escuro confortável
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <h3 className={section}>Tema</h3>
+        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+          {THEME_CARDS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              aria-pressed={theme === t.key}
+              onClick={() => setThemePref(t.key)}
+              className={`flex flex-col items-start gap-1 rounded-lg border p-2 text-left ${
+                theme === t.key ? "border-accent" : "border-border hover:bg-card"
+              }`}
+            >
+              <span className="flex h-7 w-full items-center rounded-md px-2 text-xs" style={{ background: t.bg, color: t.fg }}>
+                Aa
+              </span>
+              <span className="text-[13px] text-text">{t.label}</span>
+              <span className="text-[11px] leading-snug text-muted">{t.hint}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <h3 className={section}>Fonte</h3>
+        <Segmented
+          value={r.font}
+          options={[
+            ["firelight", "Padrão"],
+            ["legible", "Legível"],
+            ["system", "Do sistema"],
+          ]}
+          onChange={(font) => setReading({ font })}
+        />
+        <p className="text-[11px] leading-snug text-muted">
+          “Legível” é a Atkinson Hyperlegible, criada para baixa visão: letras abertas e fáceis de diferenciar (Il1, O0).
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <h3 className={section}>Texto</h3>
+        <RangeRow label="Tamanho do texto das notas" value={r.size} min={14} max={26} step={1} format={(v) => `${v}px`} onChange={(size) => setReading({ size })} />
+        <RangeRow label="Espaço entre linhas" value={r.line} min={1.4} max={2.3} step={0.05} format={(v) => v.toFixed(2)} onChange={(line) => setReading({ line })} />
+        <RangeRow
+          label="Espaço entre letras"
+          value={r.spacing}
+          min={0}
+          max={0.1}
+          step={0.01}
+          format={(v) => (v === 0 ? "normal" : `+${Math.round(v * 100)}%`)}
+          onChange={(spacing) => setReading({ spacing })}
+        />
+        <div className="flex flex-col gap-1">
+          <span className="text-[13px] text-text">Peso do texto</span>
+          <Segmented
+            value={r.weight}
+            options={[
+              [400, "Normal"],
+              [500, "Médio"],
+              [600, "Forte"],
+            ]}
+            onChange={(weight) => setReading({ weight })}
+          />
+        </div>
+      </div>
+
+      <div
+        className="rounded-lg bg-surface p-3 text-body"
+        style={{ fontSize: "var(--read-size)", lineHeight: "var(--read-line)" }}
+        aria-label="Prévia"
+      >
+        <p className="font-semibold text-text-strong">Prévia</p>
+        <p>
+          Hoje li 20 páginas de <span className="text-link underline">Dom Casmurro</span>. Il1 O0 rn m — a nota fica assim.
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          disabled={same(r, DEFAULT_READING) && theme === "system"}
+          onClick={() => {
+            setReading(null);
+            setThemePref("system");
+          }}
+          className={`${buttonBase} text-text-soft hover:bg-card disabled:opacity-40`}
+        >
+          Restaurar padrão
+        </button>
+        <button type="button" onClick={onClose} className={`${buttonBase} text-text-soft hover:bg-card`}>
+          Fechar
+        </button>
+      </div>
+      <p className="text-[11px] leading-snug text-muted">
+        Vale neste aparelho. Para aumentar também menus e botões, use o zoom do navegador (Ctrl +).
+      </p>
     </div>
   );
 }

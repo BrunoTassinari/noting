@@ -439,7 +439,7 @@ function BodyEditor({
   return (
     <>
       {!ready && (
-        <div className="min-h-[50vh] whitespace-pre-wrap break-words text-base leading-[1.7] text-body">
+        <div className="min-h-[50vh] whitespace-pre-wrap break-words text-[length:var(--read-size,16px)] leading-[var(--read-line,1.68)] text-body">
           {initialValue}
         </div>
       )}
