@@ -15,6 +15,7 @@ import { slashCommandSource } from "./slash-commands";
 import { listTemplates } from "@/lib/templates";
 import { missingLinks, refreshLinks, wrapSelectionInBrackets } from "./link-tools";
 import { wikilinkAutocomplete } from "./wikilink-autocomplete";
+import { headingFold } from "./heading-fold";
 
 /** O elemento está numa linha onde há cursor? (lá o clique é para editar) */
 function onSelectedLine(view: EditorView, el: HTMLElement): boolean {
@@ -124,6 +125,7 @@ export default function MarkdownEditor({
           // Enter continua listas e tarefas; Backspace remove a marcação.
           markdown({ base: markdownLanguage, codeLanguages: languages, addKeymap: true }),
           EditorView.lineWrapping,
+          headingFold(() => callbacks.current.linkTargets.selfId),
           EditorView.contentAttributes.of({
             "aria-label": "Conteúdo da nota",
             spellcheck: "true",

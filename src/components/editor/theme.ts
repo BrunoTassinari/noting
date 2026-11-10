@@ -41,6 +41,40 @@ export const editorTheme = EditorView.theme(
     },
     ".cm-placeholder": { color: c.muted },
 
+    // Recolher seção (setinha à esquerda do título; aparece ao passar o mouse).
+    ".cm-heading-fold": {
+      position: "absolute",
+      marginLeft: "-26px",
+      marginTop: "0.18em",
+      width: "22px",
+      height: "22px",
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: "6px",
+      color: c.muted,
+      cursor: "pointer",
+      opacity: "0",
+      transition: "opacity .12s, transform .12s",
+    },
+    ".cm-line:hover .cm-heading-fold, .cm-heading-fold:focus-visible": { opacity: "1" },
+    ".cm-heading-fold:hover": { color: c.strong, backgroundColor: "var(--color-card)" },
+    ".cm-heading-fold.cm-heading-folded": { opacity: "1", transform: "rotate(-90deg)" },
+    "@media (hover: none)": { ".cm-heading-fold": { opacity: "0.55" } },
+    ".cm-fold-pill": {
+      display: "inline-block",
+      marginLeft: "8px",
+      padding: "0 8px",
+      borderRadius: "6px",
+      backgroundColor: "var(--color-card)",
+      color: c.muted,
+      fontSize: "0.8em",
+      lineHeight: "1.5",
+      verticalAlign: "middle",
+      cursor: "pointer",
+    },
+    ".cm-fold-pill:hover": { color: c.strong },
+
     // Títulos
     // Títulos (escala e pesos do Firelight; cor por nível, modo "Firelight").
     ".cm-h": { color: c.strong, lineHeight: "1.3" },
@@ -374,6 +408,8 @@ export const editorTheme = EditorView.theme(
       ".cm-bujo-chip, .cm-bujo-input": { minHeight: "44px", height: "44px" },
       ".cm-bujo-label": { flexBasis: "100%", paddingTop: "0" },
       ".cm-tooltip-autocomplete > ul > li": { minHeight: "44px", alignItems: "center" },
+      // Sem margem à esquerda: a seta de recolher entra antes do texto.
+      ".cm-heading-fold": { position: "static", margin: "0 4px 0 -4px", verticalAlign: "middle", width: "20px", height: "24px" },
     },
 
     // Autocomplete de [[links]]
