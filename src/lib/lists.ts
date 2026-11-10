@@ -24,6 +24,7 @@ export const SIGNALS = [
   { emoji: "💡", key: "idea", label: "Ideia" },
   { emoji: "🔔", key: "reminder", label: "Lembrança" },
   { emoji: "🌱", key: "habit", label: "Hábito" },
+  { emoji: "📅", key: "event", label: "Evento" },
 ] as const;
 
 export type SignalKey = (typeof SIGNALS)[number]["key"];

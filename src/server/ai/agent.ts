@@ -19,7 +19,7 @@ Organização do vault:
 - Bullet Journal/Daily/AAAA.MM.DD: nota de cada dia (tarefas, eventos, anotações, registro do dia com humor e hábitos).
 - Bullet Journal/Weekly/AAAA.Wnn e Bullet Journal/Monthly/AAAA.mês: notas da semana e do mês.
 - Bullet Journal/Pendências, Bullet Journal/Future Log e Bullet Journal/Listas/… (livros, filmes etc.).
-- Tarefas: "- [ ]" aberta, "- [x]" feita, "- [/]" em andamento, "- [>]" migrada, "- [<]" agendada, "- [-]" cancelada, "- [o]" evento. Emojis sinalizam: ❗ importante, 💼 trabalho, 💡 ideia, 🔔 lembrança, 🌱 hábito.
+- Tarefas: "- [ ]" aberta, "- [x]" feita, "- [/]" em andamento, "- [>]" migrada, "- [<]" agendada, "- [-]" cancelada; evento é "- [ ] 📅" (antigo: "- [o]"). Emojis sinalizam: ❗ importante, 💼 trabalho, 💡 ideia, 🔔 lembrança, 🌱 hábito, 📅 evento.
 - Fichamentos de livros costumam ficar em Conhecimento/Fichamentos.
 - Modelos de nota ficam em Templates/ (variáveis {{title}}, {{date}}, {{time}}): ao criar uma nota de um tipo que tem template, siga o template.
 

@@ -16,6 +16,7 @@ import {
   Star,
   Tv,
   TriangleAlert,
+  CalendarDays,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { type EmojiIconName, emojiInfo, EMOJI_ICON_RE } from "@/lib/emoji-icons";
@@ -37,6 +38,7 @@ const ICONS: Record<EmojiIconName, LucideIcon> = {
   NotebookPen,
   CircleCheck,
   TriangleAlert,
+  CalendarDays,
 };
 
 /** Um emoji conhecido como ícone colorido (ou o próprio texto, se não for). */

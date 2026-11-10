@@ -16,7 +16,7 @@ export const maxDuration = 60;
 const INSTRUCTIONS = `Notas da pessoa no Noting (vault em Markdown no estilo Obsidian, com Bullet Journal).
 - Bullet Journal/Daily/AAAA.MM.DD: nota de cada dia; Bullet Journal/Weekly/AAAA.Wnn e Bullet Journal/Monthly/AAAA.mês.
 - Bullet Journal/Pendências, Bullet Journal/Future Log, Bullet Journal/Listas/… (livros, filmes…). Fichamentos em Conhecimento/Fichamentos.
-- Tarefas: "- [ ]" aberta, "- [x]" feita, "- [/]" em andamento, "- [>]" migrada, "- [<]" agendada, "- [-]" cancelada, "- [o]" evento. Emojis: ❗ importante, 💼 trabalho, 💡 ideia, 🔔 lembrança, 🌱 hábito.
+- Tarefas: "- [ ]" aberta, "- [x]" feita, "- [/]" em andamento, "- [>]" migrada, "- [<]" agendada, "- [-]" cancelada; evento é "- [ ] 📅" (antigo: "- [o]"). Emojis: ❗ importante, 💼 trabalho, 💡 ideia, 🔔 lembrança, 🌱 hábito, 📅 evento.
 Use as ferramentas sempre que a pergunta depender do que está escrito; não invente conteúdo que não leu. Para resumos de período use read_journal (today dá a data de hoje). Só crie ou altere notas quando a pessoa pedir; antes de editar, leia a nota. Links entre notas: [[Título]]. Modelos de nota ficam em Templates/ (variáveis {{title}}, {{date}}, {{time}}): ao criar uma nota de um tipo que tem template, siga o template.`;
 
 const note = z.string().describe('Título ("Dom Casmurro") ou caminho com título ("Conhecimento/Fichamentos/Dom Casmurro").');

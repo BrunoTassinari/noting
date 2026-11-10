@@ -17,6 +17,7 @@ import {
   Star,
   Tv,
   TriangleAlert,
+  CalendarDays,
   type IconNode,
 } from "lucide";
 import type { EmojiIconName } from "@/lib/emoji-icons";
@@ -38,6 +39,7 @@ const NODES: Record<EmojiIconName, IconNode> = {
   NotebookPen,
   CircleCheck,
   TriangleAlert,
+  CalendarDays,
 };
 
 /** Emoji desenhado como ícone de contorno colorido (o texto continua o emoji). */

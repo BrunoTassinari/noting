@@ -32,7 +32,7 @@ const indentWidth = (ws: string) => ws.replace(/\t/g, "    ").length;
 const leading = (line: string) => /^\s*/.exec(line)![0];
 
 // Prefixo da linha: lista/tarefa e sinalizadores (emojis) do começo.
-const PREFIX_RE = /^(\s*(?:[-*+]\s+(?:\[[^\]\n]\]\s+)?|\d+[.)]\s+)?)((?:(?:❗|💼|💡|🔔|🌱|⭐|📌)️?\s*)*)/u;
+const PREFIX_RE = /^(\s*(?:[-*+]\s+(?:\[[^\]\n]\]\s+)?|\d+[.)]\s+)?)((?:(?:❗|💼|💡|🔔|🌱|📅|⭐|📌)️?\s*)*)/u;
 
 /** Texto da linha sem marcação de lista, tarefa nem sinalizadores. */
 export function lineText(line: string): string {

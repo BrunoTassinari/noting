@@ -88,7 +88,7 @@ const flag = (emoji: string) => (view: EditorView, _c: Completion, from: number,
   rewriteLine(view, from, to, (indent, rest, oldPrefix) => {
     const isTask = TASK_PREFIX.test(oldPrefix);
     const head = indent + (isTask ? oldPrefix : "- [ ] ");
-    const body = rest.replace(/^(?:❗|💼|💡|🔔|🌱)\s*/u, "");
+    const body = rest.replace(/^(?:❗|💼|💡|🔔|🌱|📅)\s*/u, "");
     const text = `${head}${emoji} ${body}`;
     return { text, cursor: text.length };
   });
@@ -162,7 +162,7 @@ const COMMANDS: Cmd[] = [
     apply: insertBlock(["| Coluna 1 | Coluna 2 |", "| --- | --- |", "|  |  |"], 2, 2),
   },
 
-  { label: "Evento", detail: "- [o]", keywords: "compromisso", section: BUJO, apply: taskState("o") },
+  { label: "Evento", detail: "📅", keywords: "compromisso calendario agenda reuniao consulta", section: BUJO, apply: flag("📅") },
   { label: "Concluir tarefa", detail: "[x]", keywords: "feita done", section: BUJO, apply: taskState("x") },
   { label: "Em andamento", detail: "[/]", keywords: "fazendo", section: BUJO, apply: taskState("/") },
   { label: "Cancelar tarefa", detail: "[-]", keywords: "desisti", section: BUJO, apply: taskState("-") },

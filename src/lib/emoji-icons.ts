@@ -18,7 +18,8 @@ export type EmojiIconName =
   | "Pin"
   | "NotebookPen"
   | "CircleCheck"
-  | "TriangleAlert";
+  | "TriangleAlert"
+  | "CalendarDays";
 
 /** emoji → ícone + cor (token de matiz do tema). */
 export const EMOJI_ICONS: Record<string, { icon: EmojiIconName; hue: string; label: string }> = {
@@ -40,6 +41,8 @@ export const EMOJI_ICONS: Record<string, { icon: EmojiIconName; hue: string; lab
   "📝": { icon: "NotebookPen", hue: "apricot", label: "anotação" },
   "✅": { icon: "CircleCheck", hue: "fern", label: "feito" },
   "⚠": { icon: "TriangleAlert", hue: "apricot", label: "atenção" },
+  "📅": { icon: "CalendarDays", hue: "verdigris", label: "evento" },
+  "🗓": { icon: "CalendarDays", hue: "verdigris", label: "evento" },
 };
 
 /** Acha os emojis conhecidos (com ou sem o seletor de variação U+FE0F). */

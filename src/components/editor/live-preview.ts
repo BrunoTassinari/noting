@@ -402,7 +402,8 @@ export const livePreview = ViewPlugin.fromClass(
 );
 
 /**
- * Clique na caixinha: alterna [ ] ↔ [x]. Os outros estados ([>], [-], [o]...)
+ * Clique na caixinha: alterna [ ] ↔ [x]. Evento antigo [o] vira [x] 📅
+ * (concluído, e continua marcado como evento). Os outros estados ([>], [-]...)
  * não mudam com clique (use Ctrl/Cmd+L para percorrer os estados).
  */
 export const taskToggle = EditorView.domEventHandlers({
@@ -414,7 +415,10 @@ export const taskToggle = EditorView.domEventHandlers({
     let next: string;
     if (current === "[ ]") next = "[x]";
     else if (/\[[xX]\]/.test(current)) next = "[ ]";
-    else return false;
+    else if (current === "[o]") {
+      const after = view.state.doc.sliceString(pos + 3, pos + 8);
+      next = /^\s*(?:📅|🗓)/u.test(after) ? "[x]" : "[x] 📅";
+    } else return false;
     view.dispatch({ changes: { from: pos, to: pos + 3, insert: next } });
     event.preventDefault();
     return true;

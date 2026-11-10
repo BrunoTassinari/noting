@@ -165,7 +165,6 @@ export const editorTheme = EditorView.theme(
     ".cm-task-box-event, .cm-task-box-event:hover": {
       borderRadius: "50%",
       borderColor: "var(--color-task-event)",
-      cursor: "text",
     },
     ".cm-task-box-doing, .cm-task-box-doing:hover": {
       color: "var(--color-task-doing)",
