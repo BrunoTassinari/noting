@@ -10,9 +10,8 @@ import type { EditorView } from "@codemirror/view";
 import { loadNoteBody } from "@/components/vault/note-cache";
 import { dailyRef, refLink, today } from "@/lib/bujo";
 import type { NoteMeta } from "@/lib/note-paths";
-import { BUILTIN_TEMPLATES, stripFrontmatter } from "@/lib/builtin-templates";
 import { isPeriodicTemplate } from "@/lib/periodic-templates";
-import { fillTemplate } from "@/lib/templates";
+import { fillTemplate, stripFrontmatter, TEMPLATES_FOLDER } from "@/lib/templates";
 
 // Menu do "/": digite "/" no começo da linha (ou depois de um espaço) para
 // ver comandos; continue digitando para filtrar ("/tar" → Tarefa).
@@ -226,26 +225,25 @@ function slashCommands(ctx: CompletionContext, get: SlashContext): CompletionRes
   const words = query.split(/\s+/).filter(Boolean);
   const { templates } = get();
   const title = () => get().title;
-  // Os da pasta Templates primeiro; os prontos com o mesmo nome saem.
   // "Nota do dia/semana/mês" são modelos das notas do BuJo, não do menu.
   const mine = templates.filter((t) => !isPeriodicTemplate(t, "day") && !isPeriodicTemplate(t, "week") && !isPeriodicTemplate(t, "month"));
-  const taken = new Set(mine.map((t) => fold(t.title)));
-  const templateCmds: Cmd[] = [
-    ...mine.map((t) => ({
-      label: t.title,
-      detail: "template",
-      keywords: `template modelo ${t.path}`,
-      section: TEMPLATES,
-      apply: insertTemplate(() => loadNoteBody(t.id), title),
-    })),
-    ...BUILTIN_TEMPLATES.filter((b) => !taken.has(fold(b.title))).map((b) => ({
-      label: b.title,
-      detail: b.hint,
-      keywords: `template modelo ${b.keywords}`,
-      section: TEMPLATES,
-      apply: insertTemplate(() => Promise.resolve(b.body), title),
-    })),
-  ];
+  const templateCmds: Cmd[] = mine.length
+    ? mine.map((t) => ({
+        label: t.title,
+        detail: "template",
+        keywords: `template modelo ${t.path}`,
+        section: TEMPLATES,
+        apply: insertTemplate(() => loadNoteBody(t.id), title),
+      }))
+    : [
+        {
+          label: "Template",
+          detail: `crie notas na pasta ${TEMPLATES_FOLDER}`,
+          keywords: "modelo",
+          section: TEMPLATES,
+          apply: insert(""),
+        },
+      ];
   const options: Completion[] = [...COMMANDS, ...templateCmds].filter((c) => {
     const hay = fold(`${c.label} ${c.keywords ?? ""}`);
     return words.every((w) => hay.includes(w));

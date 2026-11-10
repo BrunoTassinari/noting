@@ -47,3 +47,9 @@ export function fillTemplate(body: string, ctx: { title: string; now?: Date; day
     return formatDate(day, fmt?.trim() || "YYYY-MM-DD");
   });
 }
+
+/** Tira o frontmatter (quando o template entra no meio de uma nota). */
+export function stripFrontmatter(body: string): string {
+  const m = /^---\n[\s\S]*?\n---\n+/.exec(body);
+  return m ? body.slice(m[0].length) : body;
+}
