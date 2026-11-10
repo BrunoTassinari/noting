@@ -37,12 +37,13 @@ export function formatDate(d: Date, format: string): string {
 }
 
 /** Troca as variáveis do template. */
-export function fillTemplate(body: string, ctx: { title: string; now?: Date }): string {
+export function fillTemplate(body: string, ctx: { title: string; now?: Date; day?: Date }): string {
   const now = ctx.now ?? new Date();
+  const day = ctx.day ?? now;
   return body.replace(/\{\{\s*(title|date|time)(?::([^}]*))?\s*\}\}/gi, (_m, name: string, fmt?: string) => {
     const key = name.toLowerCase();
     if (key === "title") return ctx.title;
     if (key === "time") return formatDate(now, fmt?.trim() || "HH:mm");
-    return formatDate(now, fmt?.trim() || "YYYY-MM-DD");
+    return formatDate(day, fmt?.trim() || "YYYY-MM-DD");
   });
 }

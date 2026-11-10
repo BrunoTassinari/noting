@@ -10,6 +10,9 @@ import {
   saveAiSettingsAction,
 } from "@/app/(vault)/assistant-actions";
 import { saveHabitsAction, savePrefsAction } from "@/app/(vault)/settings-actions";
+import { createPeriodicTemplateAction } from "@/app/(vault)/actions";
+import { isPeriodicTemplate, PERIODIC_PRESETS, PERIODIC_TEMPLATE_TITLE, PERIODIC_VARS } from "@/lib/periodic-templates";
+import type { PeriodicKind } from "@/lib/bujo";
 import {
   ACCENTS,
   ASTIGMATISM_READING,
@@ -172,6 +175,8 @@ function GeneralForm({ onClose }: { onClose: () => void }) {
         />
       </div>
 
+      <PeriodicTemplates onClose={onClose} />
+
       <p className="text-xs text-muted">Tema, fonte e tamanho do texto ficam na aba Leitura.</p>
 
       <div className="flex justify-end">
@@ -179,6 +184,69 @@ function GeneralForm({ onClose }: { onClose: () => void }) {
           Fechar
         </button>
       </div>
+    </div>
+  );
+}
+
+const KIND_LABEL: Record<PeriodicKind, string> = { day: "Dia", week: "Semana", month: "Mês" };
+
+/** Modelos das notas do dia/semana/mês: padrão do app ou Templates/Nota do dia… */
+function PeriodicTemplates({ onClose }: { onClose: () => void }) {
+  const { notes, goToNote, showError } = useVault();
+  const [busy, setBusy] = useState<string | null>(null);
+  const open = (id: string) => {
+    onClose();
+    goToNote(id);
+  };
+  const create = async (kind: PeriodicKind, preset: string) => {
+    setBusy(`${kind}:${preset}`);
+    const r = await createPeriodicTemplateAction(kind, preset).catch(() => null);
+    setBusy(null);
+    if (!r?.ok) return showError(r?.error ?? "Não foi possível criar o modelo.");
+    open(r.id);
+  };
+  const chip = "h-9 rounded-lg border border-border px-3 text-[13px] text-text hover:bg-card disabled:opacity-50 md:h-7 md:px-2.5";
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="text-xs font-semibold uppercase tracking-[0.04em] text-muted">Modelos do Bullet Journal</h3>
+      <p className="text-xs text-muted">
+        Personalize a nota que nasce a cada dia, semana ou mês. Vale para as notas novas; as que já existem não mudam.
+      </p>
+      {(["day", "week", "month"] as const).map((kind) => {
+        const mine = notes.find((n) => isPeriodicTemplate(n, kind));
+        return (
+          <div key={kind} className="flex flex-col gap-1.5 rounded-lg bg-rail p-2.5">
+            <div className="flex items-center gap-2 text-[13px]">
+              <span className="font-medium text-text-strong">{KIND_LABEL[kind]}</span>
+              <span className="text-xs text-muted">{mine ? `personalizado (Templates/${PERIODIC_TEMPLATE_TITLE[kind]})` : "padrão do app"}</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {mine ? (
+                <button type="button" className={chip} onClick={() => open(mine.id)}>
+                  Editar modelo
+                </button>
+              ) : (
+                PERIODIC_PRESETS[kind].map((p) => (
+                  <button
+                    key={p.key}
+                    type="button"
+                    title={p.hint}
+                    disabled={busy !== null}
+                    className={chip}
+                    onClick={() => void create(kind, p.key)}
+                  >
+                    {busy === `${kind}:${p.key}` ? "…" : `Personalizar: ${p.label}`}
+                  </button>
+                ))
+              )}
+            </div>
+            <p className="text-[11px] leading-snug text-muted">
+              Variáveis: {PERIODIC_VARS[kind].map(([k, d]) => `{{${k}}} ${d}`).join(" · ")} · {"{{date:DD/MM/YYYY}}"}
+              {mine ? " · Para voltar ao padrão, apague a nota do modelo." : ""}
+            </p>
+          </div>
+        );
+      })}
     </div>
   );
 }

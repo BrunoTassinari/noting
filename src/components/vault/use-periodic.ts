@@ -4,6 +4,7 @@ import { getUserHabits } from "@/lib/user-habits";
 import { useCallback, useTransition } from "react";
 import { openPeriodicNoteAction } from "@/app/(vault)/actions";
 import { type Day, isoDay, periodicNote, type PeriodicKind, today } from "@/lib/bujo";
+import { isPeriodicTemplate } from "@/lib/periodic-templates";
 import { failOptimisticNote, startOptimisticNote } from "./optimistic-note";
 import { useVault } from "./vault-context";
 
@@ -22,6 +23,15 @@ export function usePeriodicNotes() {
       const existing = notes.find((n) => n.path === ref.path && n.title === ref.title);
       if (existing) {
         if (existing.id !== activeNote?.id) goToNote(existing.id);
+        return;
+      }
+      // Modelo personalizado (Templates/Nota do dia…): o servidor preenche;
+      // espera por ele em vez de mostrar o modelo padrão antes.
+      if (notes.some((n) => isPeriodicTemplate(n, kind))) {
+        startTransition(async () => {
+          const res = await openPeriodicNoteAction(kind, isoDay(d));
+          if (res && !res.ok) showError(res.error);
+        });
         return;
       }
       const id = crypto.randomUUID();

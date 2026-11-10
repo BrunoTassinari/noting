@@ -2,7 +2,8 @@ import "server-only";
 import { and, eq, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { captures, notes } from "@/db/schema";
-import { dailyRef, dailyTemplate, parseDay } from "@/lib/bujo";
+import { dailyRef, parseDay } from "@/lib/bujo";
+import { periodicNoteFor } from "./periodic";
 import { appendCaptures, type CaptureInput } from "@/lib/capture";
 import { getOrCreateNote } from "./bujo";
 import { sameWikilinkTargets } from "@/lib/wikilinks";
@@ -25,7 +26,7 @@ export async function applyCaptures(userId: string, input: CaptureInput[]): Prom
   const results: CaptureResult[] = [];
   for (const [isoDay, items] of byDay) {
     const d = parseDay(isoDay)!;
-    const note = await getOrCreateNote(userId, dailyRef(d), dailyTemplate(d));
+    const note = await getOrCreateNote(userId, dailyRef(d), (await periodicNoteFor(userId, "day", d)).template);
     const added = await db.transaction(async (tx) => {
       const ids = await tx
         .insert(captures)

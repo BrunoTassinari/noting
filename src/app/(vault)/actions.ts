@@ -3,7 +3,10 @@
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/session";
-import { parseDay, periodicNote, type PeriodicKind } from "@/lib/bujo";
+import { parseDay, type PeriodicKind } from "@/lib/bujo";
+import { periodicNoteFor } from "@/server/periodic";
+import { PERIODIC_PRESETS, PERIODIC_TEMPLATE_TITLE } from "@/lib/periodic-templates";
+import { TEMPLATES_FOLDER } from "@/lib/templates";
 import { isUuid } from "@/lib/note-paths";
 import { getHabits } from "@/server/settings";
 import { getOrCreateNote, pullFutureLogIntoMonth } from "@/server/bujo";
@@ -119,7 +122,7 @@ export async function openPeriodicNoteAction(
   const user = await requireUser();
   let id: string;
   try {
-    const { ref, template } = periodicNote(kind, d, kind === "month" ? await getHabits(user.id) : []);
+    const { ref, template } = await periodicNoteFor(user.id, kind, d, kind === "month" ? await getHabits(user.id) : []);
     const note = await getOrCreateNote(user.id, ref, template, clientId);
     if (note.created && kind === "month") await pullFutureLogIntoMonth(user.id, note, d);
     id = note.id;
@@ -181,4 +184,25 @@ export async function deleteNoteAction(id: string, goTo?: string): Promise<Actio
     redirect(target);
   }
   return result;
+}
+
+/**
+ * Cria "Templates/Nota do dia" (ou da semana / do mês) a partir de um modelo
+ * pronto, para personalizar. Se já existe, só devolve o id dela.
+ */
+export async function createPeriodicTemplateAction(
+  kind: PeriodicKind,
+  preset: string,
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const source = PERIODIC_PRESETS[kind]?.find((p) => p.key === preset)?.source;
+  if (!source) return { ok: false, error: "Modelo inválido." };
+  const user = await requireUser();
+  try {
+    const note = await getOrCreateNote(user.id, { path: TEMPLATES_FOLDER, title: PERIODIC_TEMPLATE_TITLE[kind] }, source);
+    revalidatePath("/", "layout");
+    return { ok: true, id: note.id };
+  } catch (err) {
+    console.error(err);
+    return { ok: false, error: "Não foi possível criar o modelo." };
+  }
 }

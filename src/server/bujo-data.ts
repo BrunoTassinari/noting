@@ -4,12 +4,10 @@ import { db } from "@/db";
 import { notes } from "@/db/schema";
 import {
   dailyRef,
-  dailyTemplate,
   DAILY_FOLDER,
   type Day,
   day,
   monthlyRef,
-  monthlyTemplate,
   type NoteRef,
 } from "@/lib/bujo";
 import {
@@ -26,6 +24,7 @@ import { type FmValue, readFrontmatter, setFrontmatterKey } from "@/lib/frontmat
 import { sha256Hex } from "@/lib/hash";
 import { getOrCreateNote, pullFutureLogIntoMonth } from "./bujo";
 import { NoteError, updateNoteBody } from "./notes";
+import { periodicNoteFor } from "./periodic";
 import { getHabits } from "./settings";
 
 // Leitura e gravação dos dados do Bullet Journal em notas que NÃO estão
@@ -117,7 +116,8 @@ const dailyResult = (r: { id: string; body: string; created: boolean }): DayWrit
 
 /** Grava (ou apaga, com null) uma chave de valor único no frontmatter do dia. */
 export async function setDayValue(userId: string, d: Day, key: ScalarKey, value: string | null): Promise<DayWrite> {
-  const r = await editNote(userId, dailyRef(d), dailyTemplate(d), (body) => setKeyIn(body, key, value), {
+  const { template } = await periodicNoteFor(userId, "day", d);
+  const r = await editNote(userId, dailyRef(d), template, (body) => setKeyIn(body, key, value), {
     relink: false,
   });
   return dailyResult(r);
@@ -125,10 +125,11 @@ export async function setDayValue(userId: string, d: Day, key: ScalarKey, value:
 
 /** Marca/desmarca um hábito na lista `habitos` do dia. */
 export async function setDayHabit(userId: string, d: Day, habit: string, on: boolean): Promise<DayWrite> {
+  const { template } = await periodicNoteFor(userId, "day", d);
   const r = await editNote(
     userId,
     dailyRef(d),
-    dailyTemplate(d),
+    template,
     (body) => {
       const list = asList(readFrontmatter(body).habitos);
       const has = list.includes(habit);
@@ -148,10 +149,11 @@ export async function appendToMonth(
   heading: string,
   line: string,
 ): Promise<{ id: string; created: boolean }> {
+  const { template } = await periodicNoteFor(userId, "month", d, await getHabits(userId));
   const r = await editNote(
     userId,
     monthlyRef(d),
-    monthlyTemplate(d, await getHabits(userId)),
+    template,
     (body) => appendToSection(body, heading, line),
     // Nota do mês nova: traz as tarefas do Future Log, como ao abrir pelo menu.
     { relink: true, onCreate: (note) => pullFutureLogIntoMonth(userId, note, d) },

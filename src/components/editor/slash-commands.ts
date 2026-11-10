@@ -10,7 +10,9 @@ import type { EditorView } from "@codemirror/view";
 import { loadNoteBody } from "@/components/vault/note-cache";
 import { dailyRef, refLink, today } from "@/lib/bujo";
 import type { NoteMeta } from "@/lib/note-paths";
-import { fillTemplate, TEMPLATES_FOLDER } from "@/lib/templates";
+import { BUILTIN_TEMPLATES, stripFrontmatter } from "@/lib/builtin-templates";
+import { isPeriodicTemplate } from "@/lib/periodic-templates";
+import { fillTemplate } from "@/lib/templates";
 
 // Menu do "/": digite "/" no começo da linha (ou depois de um espaço) para
 // ver comandos; continue digitando para filtrar ("/tar" → Tarefa).
@@ -122,15 +124,17 @@ const BUJO: CompletionSection = { name: "Bullet Journal", rank: 1 };
 const INSERT: CompletionSection = { name: "Inserir", rank: 2 };
 const TEMPLATES: CompletionSection = { name: "Templates", rank: 3 };
 
-/** Troca o "/comando" pelo template (variáveis preenchidas). */
-const insertTemplate = (id: string, title: () => string) =>
+/** Troca o "/comando" pelo template (variáveis preenchidas). O frontmatter
+ * do template só entra se ele for para o começo de uma nota vazia. */
+const insertTemplate = (load: () => Promise<string | null>, title: () => string) =>
   (view: EditorView, _c: Completion, from: number, to: number) => {
     const typed = view.state.sliceDoc(from, to);
-    void loadNoteBody(id).then((body) => {
+    void load().then((body) => {
       if (body === null) return;
       // Só insere se o "/comando" ainda está lá (a pessoa não seguiu digitando).
       if (view.state.sliceDoc(from, to) !== typed) return;
-      const text = fillTemplate(body, { title: title() });
+      const atStart = view.state.sliceDoc(0, from).trim() === "" && view.state.sliceDoc(to).trim() === "";
+      const text = fillTemplate(atStart ? body : stripFrontmatter(body), { title: title() });
       view.dispatch({
         changes: { from, to, insert: text },
         selection: { anchor: from + text.length },
@@ -222,23 +226,26 @@ function slashCommands(ctx: CompletionContext, get: SlashContext): CompletionRes
   const words = query.split(/\s+/).filter(Boolean);
   const { templates } = get();
   const title = () => get().title;
-  const templateCmds: Cmd[] = templates.length
-    ? templates.map((t) => ({
-        label: t.title,
-        detail: "template",
-        keywords: `template modelo ${t.path}`,
-        section: TEMPLATES,
-        apply: insertTemplate(t.id, title),
-      }))
-    : [
-        {
-          label: "Template",
-          detail: `crie notas na pasta ${TEMPLATES_FOLDER}`,
-          keywords: "modelo",
-          section: TEMPLATES,
-          apply: insert(""),
-        },
-      ];
+  // Os da pasta Templates primeiro; os prontos com o mesmo nome saem.
+  // "Nota do dia/semana/mês" são modelos das notas do BuJo, não do menu.
+  const mine = templates.filter((t) => !isPeriodicTemplate(t, "day") && !isPeriodicTemplate(t, "week") && !isPeriodicTemplate(t, "month"));
+  const taken = new Set(mine.map((t) => fold(t.title)));
+  const templateCmds: Cmd[] = [
+    ...mine.map((t) => ({
+      label: t.title,
+      detail: "template",
+      keywords: `template modelo ${t.path}`,
+      section: TEMPLATES,
+      apply: insertTemplate(() => loadNoteBody(t.id), title),
+    })),
+    ...BUILTIN_TEMPLATES.filter((b) => !taken.has(fold(b.title))).map((b) => ({
+      label: b.title,
+      detail: b.hint,
+      keywords: `template modelo ${b.keywords}`,
+      section: TEMPLATES,
+      apply: insertTemplate(() => Promise.resolve(b.body), title),
+    })),
+  ];
   const options: Completion[] = [...COMMANDS, ...templateCmds].filter((c) => {
     const hay = fold(`${c.label} ${c.keywords ?? ""}`);
     return words.every((w) => hay.includes(w));
