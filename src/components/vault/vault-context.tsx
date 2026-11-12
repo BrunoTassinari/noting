@@ -60,7 +60,8 @@ type Vault = {
   /** Cria e abre uma nota. Sem título → "Sem título", "Sem título 2"... */
   createNote: (path: string, title?: string) => void;
   openNewFolder: () => void;
-  openSearch: () => void;
+  /** Abre a busca (com um texto inicial, ex.: "#tag"; outro valor, ex. o evento do clique, é ignorado). */
+  openSearch: (query?: unknown) => void;
   /** Configurações da pessoa (hábitos). */
   openSettings: () => void;
   /** Preferências gerais (Configurações › Geral). */
@@ -74,7 +75,7 @@ type Vault = {
   openDeleteFolder: (path: string) => void;
   showError: (message: string) => void;
   /** Renomear/mover reescreveu [[links]] nestas notas: limpa o cache e avisa. */
-  reportRelinked: (ids: string[]) => void;
+  reportRelinked: (ids: string[], retagged?: string[]) => void;
   /** Mostra a nota na hora (do cache, ou um esqueleto). Chame no clique de um link. */
   openNote: (id: string) => void;
   /** openNote + navega (para quem não usa <Link>). newTab: abre numa aba nova do app. */
@@ -196,17 +197,22 @@ export function VaultProvider({
   }, []);
 
   const reportRelinked = useCallback(
-    (ids: string[]) => {
-      ids.forEach(forgetCachedNote);
-      if (ids.length > 0) {
-        showError(`Links atualizados em ${ids.length} ${ids.length === 1 ? "nota" : "notas"}.`);
-      }
+    (ids: string[], retagged: string[] = []) => {
+      const all = [...ids, ...retagged];
+      all.forEach(forgetCachedNote);
+      // Nota aberta que mudou no servidor: o editor recarrega.
+      if (all.length) notesChanged(all);
+      const parts: string[] = [];
+      if (ids.length) parts.push(`Links atualizados em ${ids.length} ${ids.length === 1 ? "nota" : "notas"}.`);
+      if (retagged.length) parts.push(retagged.length === 1 ? "Tag da pasta atualizada." : `Tag da pasta atualizada em ${retagged.length} notas.`);
+      if (parts.length) showError(parts.join(" "));
     },
     [showError],
   );
 
   // Busca: Ctrl/Cmd+K de qualquer lugar (inclusive de dentro do editor).
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -302,7 +308,10 @@ export function VaultProvider({
     creating,
     createNote,
     openNewFolder: () => setDialog({ kind: "folder", at: activeId }),
-    openSearch: () => setSearchOpen(true),
+    openSearch: (query?: unknown) => {
+      setSearchQuery(typeof query === "string" ? query : "");
+      setSearchOpen(true);
+    },
     openSettings: () => setSettingsOpen(true),
     touchNote,
     openNote,
@@ -336,6 +345,7 @@ export function VaultProvider({
 
       <SearchPalette
         open={searchOpen}
+        initialQuery={searchQuery}
         onClose={() => setSearchOpen(false)}
         notes={allNotes}
         onCreate={(title) => createNote(currentFolder, title)}
@@ -375,7 +385,7 @@ export function VaultProvider({
           const res = await moveNoteAction(dialog.note.id, value);
           if (!res.ok) return res.error;
           close();
-          reportRelinked(res.relinked);
+          reportRelinked(res.relinked, res.retagged);
           return null;
         }}
       />
@@ -421,7 +431,7 @@ export function VaultProvider({
           const res = await renameFolderAction(dialog.path, to);
           if (!res.ok) return res.error;
           close();
-          reportRelinked(res.relinked);
+          reportRelinked(res.relinked, res.retagged);
           return null;
         }}
       />

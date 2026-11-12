@@ -6,6 +6,7 @@ import { notes, trash } from "@/db/schema";
 import { makeExcerpt } from "@/lib/markdown-text";
 import { sha256Hex } from "@/lib/hash";
 import { type RelinkChange, rewriteLinks } from "@/lib/relink";
+import { retagForMove } from "@/lib/tags";
 import { sameWikilinkTargets } from "@/lib/wikilinks";
 import { linkersOf, mentionersOf, rebuildLinks } from "./links";
 import {
@@ -252,6 +253,8 @@ export type RelinkResult = {
   meta: NoteMeta;
   /** Outras notas cujos [[links]] foram reescritos. */
   updated: string[];
+  /** Notas movidas cuja #tag da pasta foi trocada. */
+  retagged: string[];
 };
 
 /**
@@ -276,9 +279,17 @@ async function updateAndRelink(
       if (!before.some((n) => n.id === id)) throw new NoteError("Nota não encontrada.");
       const linkers = (await linkersOf(tx, userId, id)).filter((x) => x !== id);
 
+      // Mover: a #tag que espelha a pasta antiga vira a da pasta nova.
+      let retagged: string | null = null;
+      const old = before.find((n) => n.id === id)!;
+      if (kind === "move" && values.path !== undefined && values.path !== old.path) {
+        const [cur] = await tx.select({ body: notes.body }).from(notes).where(and(eq(notes.userId, userId), eq(notes.id, id)));
+        retagged = cur ? retagForMove(cur.body, old.path, values.path) : null;
+      }
+
       const [row] = await tx
         .update(notes)
-        .set(values)
+        .set(retagged === null ? values : { ...values, body: retagged })
         .where(and(eq(notes.userId, userId), eq(notes.id, id)))
         .returning(metaColumns);
       const meta = toMeta(row);
@@ -308,7 +319,7 @@ async function updateAndRelink(
 
       const mentioners = await mentionersOf(tx, userId, meta.title);
       await rebuildLinks(tx, userId, [...linkers, ...mentioners, id]);
-      return { meta, updated };
+      return { meta, updated, retagged: retagged === null ? [] : [id] };
     });
   } catch (err) {
     if (isUniqueViolation(err)) throw new NoteError(DUPLICATE_MESSAGE);
@@ -328,20 +339,22 @@ export function moveNote(userId: string, id: string, path: string) {
  * Renomear pasta: move cada nota da pasta (e das subpastas) para o caminho
  * novo, reescrevendo os [[links]] como no mover. Uma nota por vez.
  */
-export async function renameFolder(userId: string, from: string, to: string): Promise<{ updated: string[] }> {
+export async function renameFolder(userId: string, from: string, to: string): Promise<{ updated: string[]; retagged: string[] }> {
   const src = unwrap(validateFolder(from));
   const dest = unwrap(validateFolder(to));
   if (!src) throw new NoteError("Escolha uma pasta.");
-  if (dest === src) return { updated: [] };
+  if (dest === src) return { updated: [], retagged: [] };
   if (dest.startsWith(`${src}/`)) throw new NoteError("Não dá para mover a pasta para dentro dela mesma.");
   const inside = (await listNotes(userId)).filter((n) => n.path === src || n.path.startsWith(`${src}/`));
   if (inside.length === 0) throw new NoteError("Pasta não encontrada.");
   const updated = new Set<string>();
+  const retagged: string[] = [];
   for (const n of inside) {
     const res = await moveNote(userId, n.id, dest + n.path.slice(src.length));
     res.updated.forEach((id) => updated.add(id));
+    retagged.push(...res.retagged);
   }
-  return { updated: [...updated] };
+  return { updated: [...updated], retagged };
 }
 
 /** Move a nota para a lixeira (dá para restaurar com o mesmo id). */

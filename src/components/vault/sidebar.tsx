@@ -270,7 +270,7 @@ function RenameInput({ note, indent, onDone }: { note: NoteMeta; indent: number;
       const res = await renameNoteAction(note.id, title);
       const err = actionError(res);
       if (err) showError(err);
-      else if (res.ok) reportRelinked(res.relinked);
+      else if (res.ok) reportRelinked(res.relinked, res.retagged);
     } catch (e) {
       showError((e as Error).message);
     }

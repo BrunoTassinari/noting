@@ -331,7 +331,7 @@ function TitleInput({
       await whenCreated(noteId);
       const res = await renameNoteAction(noteId, draft);
       err = actionError(res);
-      if (res.ok) reportRelinked(res.relinked);
+      if (res.ok) reportRelinked(res.relinked, res.retagged);
     } catch (e) {
       err = (e as Error).message;
     }

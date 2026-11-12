@@ -181,7 +181,7 @@ function GroupRow({ group, onChange, onRemove }: { group: ColorGroup; onChange: 
         <input
           value={group.query}
           onChange={(e) => onChange({ ...group, query: e.target.value })}
-          placeholder="Pasta ou nome (ex.: Trabalho)"
+          placeholder="Pasta, nome ou #tag (ex.: #leitura)"
           aria-label="Filtro do grupo"
           className="h-8 min-w-0 flex-1 rounded-md border border-border bg-surface px-2 text-[13px] text-text outline-none placeholder:text-muted focus:border-accent"
         />
@@ -235,6 +235,7 @@ function GraphSettingsPanel({ onClose, compact = false }: { onClose: () => void;
           checked={s.ghosts}
           onChange={(v) => set({ ghosts: v })}
         />
+        <Check label="Tags" hint="Um ponto por #tag, ligado às notas que a têm (clique busca)" checked={s.tags} onChange={(v) => set({ tags: v })} />
         <Check label="Notas sem ligações" checked={s.orphans} onChange={(v) => set({ orphans: v })} />
       </Section>
 
@@ -250,7 +251,7 @@ function GraphSettingsPanel({ onClose, compact = false }: { onClose: () => void;
         >
           <PlusIcon size={14} /> Novo grupo
         </button>
-        <p className="text-[11px] leading-snug text-muted">O primeiro grupo que combinar com o caminho da nota define a cor.</p>
+        <p className="text-[11px] leading-snug text-muted">O primeiro grupo que combinar define a cor. Com #, vale a tag (e as subtags: #Projetos pega #Projetos/Alura).</p>
       </Section>
 
       <Section title="Exibição" open={!compact}>

@@ -16,6 +16,8 @@ export type GraphSettings = {
   lists: boolean;
   ghosts: boolean;
   orphans: boolean;
+  /** Pontos de #tag ligados às notas que têm a tag. */
+  tags: boolean;
   // Grupos
   colorByFolder: boolean;
   groups: ColorGroup[];
@@ -37,6 +39,7 @@ export const DEFAULT_GRAPH: GraphSettings = {
   lists: true,
   ghosts: false,
   orphans: true,
+  tags: false,
   colorByFolder: true,
   groups: [],
   arrows: false,

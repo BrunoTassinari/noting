@@ -35,11 +35,13 @@ export function Highlight({ text, ranges }: { text: string; ranges: [number, num
 /** Busca rápida por título e conteúdo. Abre com Ctrl/Cmd+K. */
 export function SearchPalette({
   open,
+  initialQuery = "",
   onClose,
   notes,
   onCreate,
 }: {
   open: boolean;
+  initialQuery?: string;
   onClose: () => void;
   notes: NoteMeta[];
   onCreate: (title: string) => void;
@@ -63,22 +65,24 @@ export function SearchPalette({
       }}
       className="m-0 h-dvh max-h-none w-full max-w-none bg-panel p-0 text-text backdrop:bg-black/60 md:mx-auto md:mt-[12vh] md:h-fit md:max-h-[70vh] md:w-[calc(100%-32px)] md:max-w-xl md:rounded-xl md:border md:border-border"
     >
-      {open && <Palette notes={notes} onClose={onClose} onCreate={onCreate} />}
+      {open && <Palette initialQuery={initialQuery} notes={notes} onClose={onClose} onCreate={onCreate} />}
     </dialog>
   );
 }
 
 function Palette({
+  initialQuery,
   notes,
   onClose,
   onCreate,
 }: {
+  initialQuery: string;
   notes: NoteMeta[];
   onClose: () => void;
   onCreate: (title: string) => void;
 }) {
   const { goToNote } = useVault();
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [server, setServer] = useState<{ q: string; results: SearchResult[] } | null>(null);
   const [failed, setFailed] = useState(false);
   const [active, setActive] = useState(0);
@@ -128,7 +132,7 @@ function Palette({
     }
     // Já existe uma nota com esse nome (ignorando maiúsculas e acentos)?
     const exact = notes.some((n) => fold(n.title) === fold(trimmed));
-    if (!exact && !trimmed.includes("/")) list.push({ kind: "create", title: trimmed });
+    if (!exact && !trimmed.includes("/") && !trimmed.startsWith("#")) list.push({ kind: "create", title: trimmed });
     return list;
   }, [trimmed, server, notes, terms]);
 

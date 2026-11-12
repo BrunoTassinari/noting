@@ -135,21 +135,25 @@ export async function openPeriodicNoteAction(
   redirect(`/n/${id}`);
 }
 
-/** Renomear/mover: `relinked` = ids das outras notas com [[links]] reescritos. */
-export type RelinkActionResult = { ok: true; relinked: string[] } | { ok: false; error: string };
+/**
+ * Renomear/mover: `relinked` = ids das outras notas com [[links]] reescritos;
+ * `retagged` = notas movidas cuja #tag da pasta mudou.
+ */
+export type RelinkActionResult = { ok: true; relinked: string[]; retagged: string[] } | { ok: false; error: string };
 
-async function runRelink(fn: (userId: string) => Promise<Pick<RelinkResult, "updated">>): Promise<RelinkActionResult> {
+async function runRelink(fn: (userId: string) => Promise<Pick<RelinkResult, "updated" | "retagged">>): Promise<RelinkActionResult> {
   const user = await requireUser();
   let relinked: string[];
+  let retagged: string[];
   try {
-    relinked = (await fn(user.id)).updated;
+    ({ updated: relinked, retagged } = await fn(user.id));
   } catch (err) {
     if (err instanceof NoteError) return { ok: false, error: err.message };
     console.error(err);
     return { ok: false, error: "Algo deu errado. Tente de novo." };
   }
   refresh();
-  return { ok: true, relinked };
+  return { ok: true, relinked, retagged };
 }
 
 export async function renameNoteAction(id: string, title: string): Promise<RelinkActionResult> {

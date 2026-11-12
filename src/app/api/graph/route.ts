@@ -8,13 +8,15 @@ import { LISTS_FOLDER } from "@/lib/bujo";
 import { fold } from "@/lib/fold";
 import { itemLabel, itemLinkTarget, parseListItems } from "@/lib/lists";
 import { resolveWikilink, wikilinkTitle } from "@/lib/note-paths";
+import { findTags } from "@/lib/tags";
 import { findWikilinks } from "@/lib/wikilinks";
 
 // GET /api/graph: ligações entre notas para o grafo.
 //  - edges: [[links]] resolvidos + itens de lista que têm nota com o mesmo
 //    nome (ex.: o livro na lista "Livros" e o fichamento dele);
 //  - ghosts: [[links]] para notas que não existem e itens de lista sem nota
-//    (o grafo mostra como pontos apagados, como no Obsidian).
+//    (o grafo mostra como pontos apagados, como no Obsidian);
+//  - tags: #tags de cada nota (pontos de tag e grupos de cor "#tag").
 export async function GET() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
@@ -34,8 +36,10 @@ export async function GET() {
   const edges: [string, string][] = linkRows.map((r) => [r.from, r.to]);
   const seen = new Set(edges.map(([a, b]) => `${a}>${b}`));
   const ghosts: [string, string, "link" | "item"][] = [];
+  const tags: [string, string][] = [];
 
   for (const r of rows) {
+    for (const t of findTags(r.body)) tags.push([r.id, t]);
     for (const l of findWikilinks(r.body)) {
       if (l.target.startsWith("#")) continue;
       if (!resolveWikilink(metas, l.target, r.path)) ghosts.push([r.id, wikilinkTitle(l.target), "link"]);
@@ -55,5 +59,5 @@ export async function GET() {
     }
   }
 
-  return NextResponse.json({ edges, ghosts }, { headers: { "Cache-Control": "private, no-store" } });
+  return NextResponse.json({ edges, ghosts, tags }, { headers: { "Cache-Control": "private, no-store" } });
 }

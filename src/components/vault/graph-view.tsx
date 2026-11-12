@@ -32,6 +32,8 @@ type Node = SimulationNodeDatum & {
   color: string;
   /** Nota que ainda não existe ([[link]] sem nota, item de lista sem nota). */
   ghost?: boolean;
+  /** Ponto de #tag. */
+  tag?: boolean;
 };
 type Link = SimulationLinkDatum<Node> & { source: Node | string; target: Node | string };
 
@@ -48,7 +50,7 @@ function folderHue(path: string, order: string[]): string | null {
   return HUES[(i < 0 ? 0 : i) % HUES.length];
 }
 
-type GraphData = { edges: [string, string][]; ghosts: [string, string, "link" | "item"][] };
+type GraphData = { edges: [string, string][]; ghosts: [string, string, "link" | "item"][]; tags: [string, string][] };
 let edgeCache: { at: number; data: GraphData } | null = null;
 
 async function loadEdges(force = false): Promise<GraphData> {
@@ -56,7 +58,7 @@ async function loadEdges(force = false): Promise<GraphData> {
   const res = await fetch("/api/graph");
   if (!res.ok) throw new Error(String(res.status));
   const data = (await res.json()) as GraphData;
-  edgeCache = { at: Date.now(), data: { edges: data.edges ?? [], ghosts: data.ghosts ?? [] } };
+  edgeCache = { at: Date.now(), data: { edges: data.edges ?? [], ghosts: data.ghosts ?? [], tags: data.tags ?? [] } };
   return edgeCache.data;
 }
 
@@ -65,7 +67,7 @@ function useEdges() {
   const reload = useCallback((force = false) => {
     loadEdges(force)
       .then(setData)
-      .catch(() => setData((e) => e ?? { edges: [], ghosts: [] }));
+      .catch(() => setData((e) => e ?? { edges: [], ghosts: [], tags: [] }));
   }, []);
   useEffect(() => {
     reload();
@@ -93,7 +95,7 @@ export function GraphView({
   options: GraphOptions;
   onStats?: (s: { nodes: number; links: number }) => void;
 }) {
-  const { notes, goToNote, createNote } = useVault();
+  const { notes, goToNote, createNote, openSearch } = useVault();
   const { data, reload } = useEdges();
   const settings = useGraphSettings();
   const settingsRef = useRef(settings);
@@ -128,7 +130,19 @@ export function GraphView({
         pairs.push([from, id]);
       }
     }
-    const exists = (id: string) => byId.has(id) || ghostNames.has(id);
+    // Tags: um ponto por tag ("#Projetos/Alura"), ligado às notas que a têm.
+    const tagNames = new Map<string, string>();
+    const tagsOf = new Map<string, string[]>();
+    for (const [from, t] of data.tags) {
+      if (!byId.has(from)) continue;
+      tagsOf.set(from, [...(tagsOf.get(from) ?? []), fold(t)]);
+      if (!settings.tags) continue;
+      const id = `tag:${fold(t)}`;
+      if (!tagNames.has(id)) tagNames.set(id, `#${t}`);
+      pairs.push([from, id]);
+    }
+    const virtual = (id: string) => ghostNames.has(id) || tagNames.has(id);
+    const exists = (id: string) => byId.has(id) || virtual(id);
     pairs = pairs.filter(([a, b]) => exists(a) && exists(b));
     let keep: Set<string>;
 
@@ -151,7 +165,7 @@ export function GraphView({
       }
     } else {
       keep = new Set(notes.filter((n) => shown(n) && inSpace(space, n.path)).map((n) => n.id));
-      for (const [a, b] of pairs) if (ghostNames.has(b) && keep.has(a)) keep.add(b);
+      for (const [a, b] of pairs) if (virtual(b) && keep.has(a)) keep.add(b);
     }
     pairs = pairs.filter(([a, b]) => keep.has(a) && keep.has(b));
 
@@ -164,22 +178,27 @@ export function GraphView({
 
     const tops = [...new Set(notes.map((n) => n.path.split("/")[0]).filter(Boolean))].sort();
     const groups = settings.groups.filter((g) => g.query.trim()).map((g) => ({ q: fold(g.query.trim()), hue: g.hue }));
-    const colorOf = (path: string, title: string) => {
+    // Grupo "#tag": notas com a tag (ou uma subtag dela); senão, pasta/nome.
+    const colorOf = (id: string, path: string, title: string) => {
       const hay = fold(path ? `${path}/${title}` : title);
-      const g = groups.find((x) => hay.includes(x.q));
+      const tags = tagsOf.get(id) ?? [];
+      const g = groups.find((x) =>
+        x.q.startsWith("#") ? tags.some((t) => t === x.q.slice(1) || t.startsWith(`${x.q.slice(1)}/`)) : hay.includes(x.q),
+      );
       if (g) return g.hue;
       return settings.colorByFolder ? (folderHue(path, tops) ?? "") : "";
     };
     const nodes: Node[] = [...keep].map((id) => {
       const n = byId.get(id);
+      if (tagNames.has(id)) return { id, title: tagNames.get(id)!, path: "", degree: degree.get(id) ?? 0, color: "", tag: true };
       if (!n) return { id, title: ghostNames.get(id) ?? id, path: "", degree: degree.get(id) ?? 0, color: "", ghost: true };
-      return { id, title: n.title, path: n.path, degree: degree.get(id) ?? 0, color: colorOf(n.path, n.title) };
+      return { id, title: n.title, path: n.path, degree: degree.get(id) ?? 0, color: colorOf(id, n.path, n.title) };
     });
     // Mesmo par em sentidos opostos vira uma linha só.
     const uniq = new Map<string, [string, string]>();
     for (const [a, b] of pairs) uniq.set(`${a}>${b}`, [a, b]);
     return { nodes, links: [...uniq.values()].map(([a, b]) => ({ source: a, target: b })) as Link[] };
-  }, [data, notes, mode, centerId, options.depth, space, settings.periodic, settings.lists, settings.ghosts, settings.orphans, settings.groups, settings.colorByFolder]);
+  }, [data, notes, mode, centerId, options.depth, space, settings.periodic, settings.lists, settings.ghosts, settings.tags, settings.orphans, settings.groups, settings.colorByFolder]);
 
   useEffect(() => {
     if (graph) onStats?.({ nodes: graph.nodes.length, links: graph.links.length });
@@ -257,9 +276,18 @@ export function GraphView({
       for (const n of nodes) {
         const r = radius(n, st.nodeSize);
         ctx.globalAlpha = dim(n) ? 0.18 : n.ghost ? 0.45 : 1;
-        ctx.fillStyle = n.id === centerId ? accent : n.ghost ? muted : n.color ? color(`hue-${n.color}`) : neutral;
+        ctx.fillStyle =
+          n.id === centerId ? accent : n.ghost ? muted : n.tag ? color("hue-verdigris") : n.color ? color(`hue-${n.color}`) : neutral;
         ctx.beginPath();
-        ctx.arc(n.x!, n.y!, r, 0, Math.PI * 2);
+        if (n.tag) {
+          // Tag: losango (não se confunde com as notas coloridas pela pasta).
+          const d = r * 1.25;
+          ctx.moveTo(n.x!, n.y! - d);
+          ctx.lineTo(n.x! + d, n.y!);
+          ctx.lineTo(n.x!, n.y! + d);
+          ctx.lineTo(n.x! - d, n.y!);
+          ctx.closePath();
+        } else ctx.arc(n.x!, n.y!, r, 0, Math.PI * 2);
         ctx.fill();
         if (n === hv) {
           ctx.strokeStyle = accent;
@@ -459,7 +487,8 @@ export function GraphView({
         }
         simRef.current?.alphaTarget(0);
         if (!moved) {
-          if (node.ghost) createNote("", node.title);
+          if (node.tag) openSearch(node.title);
+          else if (node.ghost) createNote("", node.title);
           else goToNote(node.id, e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1);
         }
       }
@@ -488,7 +517,7 @@ export function GraphView({
       canvas.removeEventListener("pointerleave", leave);
       canvas.removeEventListener("wheel", wheel);
     };
-  }, [goToNote, createNote, mode, centerId]);
+  }, [goToNote, createNote, openSearch, mode, centerId]);
 
   const empty = graph && graph.nodes.length === 0;
   const edges = data;
