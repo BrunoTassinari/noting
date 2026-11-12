@@ -279,15 +279,7 @@ export function GraphView({
         ctx.fillStyle =
           n.id === centerId ? accent : n.ghost ? muted : n.tag ? color("hue-verdigris") : n.color ? color(`hue-${n.color}`) : neutral;
         ctx.beginPath();
-        if (n.tag) {
-          // Tag: losango (não se confunde com as notas coloridas pela pasta).
-          const d = r * 1.25;
-          ctx.moveTo(n.x!, n.y! - d);
-          ctx.lineTo(n.x! + d, n.y!);
-          ctx.lineTo(n.x!, n.y! + d);
-          ctx.lineTo(n.x! - d, n.y!);
-          ctx.closePath();
-        } else ctx.arc(n.x!, n.y!, r, 0, Math.PI * 2);
+        ctx.arc(n.x!, n.y!, r, 0, Math.PI * 2);
         ctx.fill();
         if (n === hv) {
           ctx.strokeStyle = accent;
